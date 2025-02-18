@@ -1,0 +1,6 @@
+@TechAid_HostAddress = http://localhost:5215
+
+GET {{TechAid_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
