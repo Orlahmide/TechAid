@@ -60,9 +60,9 @@ namespace TechAid.Controllers
 
         [HttpPost]
         [Route("mark_as_completed")]
-        public IActionResult MackAsCompleted([FromQuery] Guid id)
+        public IActionResult MackAsCompleted([FromQuery] Guid id, [FromQuery] int ticId)
         {
-            var newTicket = ticketService.MarkAsCompleted(id);
+            var newTicket = ticketService.MarkAsCompleted(id, ticId);
 
             return Ok(newTicket);
         }
@@ -112,14 +112,24 @@ namespace TechAid.Controllers
             return Ok(newTicket);
         }
 
-        [HttpGet]
-        [Route("search_by_date_eid")]
-        public IActionResult GetByDateAndEmployeeId(DateTime d, Guid id)
+        //[HttpGet]
+        //[Route("search_employee")]
+        //public IActionResult GetByDateAndEmployeeId(DateTime d, Guid id, Status status)
+        //{
+        //    var newTicket = ticketService.SearchForEmployee(d.Date, id, status);
+
+        //    return Ok(newTicket);
+
+        //}
+
+        [HttpGet("filter")]
+        public async Task<IActionResult> GetFilteredTickets(
+         [FromQuery] Guid employeeId,
+         [FromQuery] DateTime? date,
+         [FromQuery] Status status)
         {
-            var newTicket = ticketService.SearchByDateAndEmployee(d.Date, id);
-
-            return Ok(newTicket);
-
+            var tickets = await ticketService.GetFilteredTicketsAsync(employeeId, date, status);
+            return Ok(tickets);
         }
 
         [HttpGet]
