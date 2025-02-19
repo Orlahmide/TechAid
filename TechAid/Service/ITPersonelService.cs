@@ -141,7 +141,8 @@ namespace TechAid.Service
             }
 
             tic.ITPersonelId = itPersonnel.Id; 
-            tic.Status = Status.ACTIVE; 
+            tic.Status = Status.ACTIVE;
+            tic.UpdatedAt = DateTime.Now;
 
             dbContext.SaveChanges(); 
 
