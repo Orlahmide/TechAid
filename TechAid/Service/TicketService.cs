@@ -86,17 +86,18 @@ namespace TechAid.Service
             return ticketDetails;
         }
 
-        public Ticket? UpdateTicket(UpdateTicketDto updateTicketDto)
+        public Ticket? MarkAsCompleted(Guid id, int ticId)
         {
 
-            var ticketDetails = dbContext.Tickets.Find(updateTicketDto.Id);
+            var ticketDetails = dbContext.Tickets.FirstOrDefault(ticket => ticket.Status == Status.ACTIVE && ticket.ITPersonelId == id);
+
 
             if(ticketDetails is null)
             {
                 return null;
             }
 
-            ticketDetails.Status = updateTicketDto.Status;
+            ticketDetails.Status= Status.COMPLETED;
 
             ticketDetails.UpdatedAt = DateTime.Now;
 
@@ -158,6 +159,54 @@ namespace TechAid.Service
             return count - countB - countA;
         }
 
+        public IEnumerable<Ticket>? SearchByDate(DateTime d)
+        {
+            var search = dbContext.Tickets.Where(tickt => tickt.CreatedAt.Date == d.Date);
+
+            if (search is null)
+            {
+                return null;
+            }
+
+            return search;
+
+        }
+
+        public IEnumerable<Ticket>? SearchByDateAndEmployee(DateTime? d, Guid id, Status? status)
+        {
+            
+            var searchByStatus = dbContext.Tickets.Where(ticket => ticket.Status == status && ticket.EmployeeId == id).ToList();
+
+            var searchByAll = dbContext.Tickets.Where(ticket => ticket.CreatedAt.Date == d.Date && ticket.EmployeeId == id && ticket.Status == status).ToList();
+
+            if(status is null)
+            {
+                var searchByDate = dbContext.Tickets.Where(ticket => ticket.CreatedAt.Date == d.Date && ticket.EmployeeId == id).ToList();
+
+                return searchByDate;
+            }
+            else if(d is null)
+            {
+
+            }
+
+
+
+        }
+
+
+        public IEnumerable<Ticket>? SearchByDateAndIt(DateTime d, Guid id)
+        {
+            var search = dbContext.Tickets.Where(ticket => ticket.CreatedAt.Date == d.Date && ticket.ITPersonelId == id).ToList();
+
+            if (search is null)
+            {
+                return null;
+            }
+
+            return search;
+
+        }
 
     }
 }

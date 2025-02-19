@@ -59,10 +59,10 @@ namespace TechAid.Controllers
         }
 
         [HttpPost]
-        [Route("update_status")]
-        public IActionResult UpdateStatus([FromQuery] UpdateTicketDto updateTicketDto)
+        [Route("mark_as_completed")]
+        public IActionResult MackAsCompleted([FromQuery] Guid id)
         {
-            var newTicket = ticketService.UpdateTicket(updateTicketDto);
+            var newTicket = ticketService.MarkAsCompleted(id);
 
             return Ok(newTicket);
         }
@@ -102,5 +102,35 @@ namespace TechAid.Controllers
 
             return Ok(newTicket);
         }
+
+        [HttpGet]
+        [Route("get_by_date")]
+        public IActionResult GetByDate(DateTime d)
+        {
+            var newTicket = ticketService.SearchByDate(d.Date);
+
+            return Ok(newTicket);
+        }
+
+        [HttpGet]
+        [Route("search_by_date_eid")]
+        public IActionResult GetByDateAndEmployeeId(DateTime d, Guid id)
+        {
+            var newTicket = ticketService.SearchByDateAndEmployee(d.Date, id);
+
+            return Ok(newTicket);
+
+        }
+
+        [HttpGet]
+        [Route("search_by_date_pid")]
+        public IActionResult GetByDateAndItId(DateTime d, Guid id)
+        {
+            var newTicket = ticketService.SearchByDateAndIt(d.Date, id);
+
+            return Ok(newTicket);
+
+        }
+
     }
 }
