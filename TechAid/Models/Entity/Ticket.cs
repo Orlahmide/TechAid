@@ -34,15 +34,11 @@ namespace TechAid.Models.Entity
         public required DateTime UpdatedAt { get; set; }
 
         public Guid EmployeeId { get; set; }
-        public Guid? ITPersonelId { get; set; } // Changed for consistency
 
-        [ForeignKey("ITPersonelId")]
-        public ITPersonel? ItPersonnel { get; set; }
+        public Guid? It_PersonnelId { get; set; }
 
         [ForeignKey("EmployeeId")]
         public Employee? Employee { get; set; }
-
-      
 
     
     }

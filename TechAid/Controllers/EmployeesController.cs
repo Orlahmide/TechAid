@@ -1,4 +1,5 @@
 ﻿using Azure.Messaging;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using TechAid.Data;
@@ -68,14 +69,22 @@ namespace TechAid.Controllers
             return Ok(new {message = "user deleted successfully", employee = employee});
         }
 
+        [AllowAnonymous]
         [HttpPost]
         [Route("login")]
         public IActionResult LoginEmployee(LoginDto loginDto)
         {
             var employee = employeeService.Login(loginDto);
 
+            if (employee?.Token == null) 
+            {
+                return BadRequest(employee?.Confirmation);
+            }
+
             return Ok(employee);
         }
+
+       
 
 
     }

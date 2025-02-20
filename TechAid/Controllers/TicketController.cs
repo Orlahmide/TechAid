@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using TechAid.Dto;
 using TechAid.Models.Enums;
 using TechAid.Service;
@@ -42,6 +43,7 @@ namespace TechAid.Controllers
 
         [HttpGet]
         [Route("get_all_ticket")]
+        [Authorize(Roles = "ADMIN")]
         public IActionResult getAllTicket()
         {
             var newTicket = ticketService.GetAllTickets();
@@ -112,34 +114,27 @@ namespace TechAid.Controllers
             return Ok(newTicket);
         }
 
-        //[HttpGet]
-        //[Route("search_employee")]
-        //public IActionResult GetByDateAndEmployeeId(DateTime d, Guid id, Status status)
-        //{
-        //    var newTicket = ticketService.SearchForEmployee(d.Date, id, status);
-
-        //    return Ok(newTicket);
-
-        //}
-
         [HttpGet("filter")]
-        public async Task<IActionResult> GetFilteredTickets(
-         [FromQuery] Guid employeeId,
+        public IActionResult GetFilteredTickets(
          [FromQuery] DateTime? date,
-         [FromQuery] Status status)
+         [FromHeader] Guid employeeId,
+         [FromQuery] Status? status,
+         [FromQuery] Priority? priority,
+         [FromQuery] Category? category,
+         [FromQuery] Department? department)
         {
-            var tickets = await ticketService.GetFilteredTicketsAsync(employeeId, date, status);
+            var tickets = ticketService.SearchForEmployee(date, employeeId, status, priority, category, department);
             return Ok(tickets);
         }
 
-        [HttpGet]
-        [Route("search_by_date_pid")]
-        public IActionResult GetByDateAndItId(DateTime d, Guid id)
+        [HttpPost]
+        [Route("assign")]
+        [Authorize(Roles = "IT_PERSONNEL")]
+        public IActionResult AssignTicket([FromQuery] Guid employeeId, [FromQuery] int ticketId)
         {
-            var newTicket = ticketService.SearchByDateAndIt(d.Date, id);
+            var employee = ticketService.AssignTicket(employeeId ,ticketId);
 
-            return Ok(newTicket);
-
+            return Ok(employee);
         }
 
     }

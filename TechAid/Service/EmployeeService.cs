@@ -2,17 +2,21 @@
 using System.ComponentModel.DataAnnotations;
 using TechAid.Data;
 using TechAid.Dto;
+using TechAid.Interface;
 using TechAid.Models.Entity;
+using TechAid.Models.Enums;
 
 namespace TechAid.Service
 {
     public class EmployeeService{
 
         private readonly ApplicationDbContext dbContext;
+        private readonly ITokenGenerator itoken;
 
-        public EmployeeService(ApplicationDbContext dbContext)
+        public EmployeeService(ApplicationDbContext dbContext, ITokenGenerator tokenGenerator)
         {
             this.dbContext = dbContext;
+            this.itoken = tokenGenerator;
         }
 
         public Employee? AddEmployee(AddEmployeeDto addEmployeeDto)
@@ -32,7 +36,8 @@ namespace TechAid.Service
                 First_name = addEmployeeDto.First_name,
                 Last_name = addEmployeeDto.Last_name,
                 CreatedAt = DateTime.Now,
-                UpdatedAt = DateTime.Now
+                UpdatedAt = DateTime.Now,
+                Role = addEmployeeDto.Role,
             };
 
            
@@ -81,16 +86,33 @@ namespace TechAid.Service
                 return null;
             }
 
-            update.Phone_number = updateEmployeeDto.Phone_number;
-            update.Password = updateEmployeeDto.Password;
-            update.First_name = updateEmployeeDto.First_name;
-            update.Last_name = updateEmployeeDto.Last_name;
+            if (!string.IsNullOrEmpty(updateEmployeeDto.Phone_number))
+            {
+                update.Phone_number = updateEmployeeDto.Phone_number;
+            }
+
+            if (!string.IsNullOrEmpty(updateEmployeeDto.Password))
+            {
+                update.Password = BCrypt.Net.BCrypt.HashPassword(updateEmployeeDto.Password);
+            }
+
+            if (!string.IsNullOrEmpty(updateEmployeeDto.First_name))
+            {
+                update.First_name = updateEmployeeDto.First_name;
+            }
+
+            if (!string.IsNullOrEmpty(updateEmployeeDto.Last_name))
+            {
+                update.Last_name = updateEmployeeDto.Last_name;
+            }
+
             update.UpdatedAt = DateTime.Now;
 
             dbContext.SaveChanges();
 
             return update;
         }
+
 
         public string DeleteEmployee(Guid id)
         {
@@ -108,22 +130,26 @@ namespace TechAid.Service
         }
 
 
-        public string Login(LoginDto loginDto)
+        public LoginResponse? Login(LoginDto loginDto)
         {
             var user = dbContext.Employees.FirstOrDefault(e => e.Email.ToLower() == loginDto.Email.ToLower());
 
             if (user == null)
             {
-                return "User does not exist";
+                return new LoginResponse { Confirmation = "Invalid credentials", Token = null };
             }
 
             if (BCrypt.Net.BCrypt.Verify(loginDto.Password, user.Password) && user.Email==loginDto.Email)
             {
-                return "Login successful!";
+                var token = itoken.GenerateToken(user.Id, user.Role);
+                return new LoginResponse { Confirmation = "Login successful", Token = token };
+                
             }
 
-            return "Incorrect credentials";
+            return new LoginResponse { Confirmation = "Login failed", Token = null };
         }
+
+     
 
     }
 }

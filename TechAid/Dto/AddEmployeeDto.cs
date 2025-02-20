@@ -1,4 +1,6 @@
-﻿namespace TechAid.Dto
+﻿using TechAid.Models.Enums;
+
+namespace TechAid.Dto
 {
     public class AddEmployeeDto
     {
@@ -11,6 +13,8 @@
         public required string First_name { get; set; }
 
         public required string Last_name { get; set; }
+
+        public required Role Role { get; set; }
 
     }
 }

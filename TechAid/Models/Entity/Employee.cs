@@ -2,6 +2,7 @@
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Data;
 using System.Text.Json.Serialization;
+using TechAid.Models.Enums;
 using TechAid.Validation;
 
 namespace TechAid.Models.Entity
@@ -25,6 +26,10 @@ namespace TechAid.Models.Entity
         public required DateTime CreatedAt { get; set; }
 
         public required DateTime UpdatedAt { get; set; }
+
+        [JsonConverter(typeof(JsonStringEnumConverter))]
+        public required Role Role { get; set; }
+
 
         [JsonIgnore]
         public ICollection<Ticket> Tickets { get; set; } = new List<Ticket>();

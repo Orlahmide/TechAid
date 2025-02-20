@@ -34,17 +34,6 @@ namespace TechAid.Service
                 UpdatedAt = DateTime.Now
             };
 
-            //var availableItPersonnel = dbContext.ITPersonels
-            //    .Include(p => p.AssignedTickets) 
-            //    .OrderBy(p => p.AssignedTickets.Count(t => t.Status == Status.ACTIVE))
-            //    .FirstOrDefault();
-
-            //if (availableItPersonnel != null)
-            //{
-            //    ticket.ITPersonelId = availableItPersonnel.Id; 
-            //    availableItPersonnel.AssignedTickets.Add(ticket);
-            //}
-
             dbContext.Tickets.Add(ticket);
             dbContext.SaveChanges();
 
@@ -89,7 +78,7 @@ namespace TechAid.Service
         public Ticket? MarkAsCompleted(Guid id, int ticId)
         {
 
-            var ticketDetails = dbContext.Tickets.FirstOrDefault(ticket => ticket.Status == Status.ACTIVE && ticket.ITPersonelId == id);
+            var ticketDetails = dbContext.Tickets.FirstOrDefault(ticket => ticket.Status == Status.ACTIVE && ticket.EmployeeId == id);
 
 
             if (ticketDetails is null)
@@ -119,7 +108,6 @@ namespace TechAid.Service
 
             return count;
         }
-
 
         public int? TotalActive()
         {
@@ -172,71 +160,50 @@ namespace TechAid.Service
 
         }
 
-
-
-        public async Task<List<Ticket>> GetFilteredTicketsAsync(Guid employeeId, DateTime? date, Status? status)
+        public IEnumerable<Ticket> SearchForEmployee(DateTime? d, Guid id, Status? status, Priority? priority, Category? category, Department? department)
         {
             var query = dbContext.Tickets
-                .Where(t => t.EmployeeId == employeeId) // Filter by Employee ID
-                .AsQueryable();
-
-            if (date.HasValue)
-            {
-                query = query.Where(t => t.CreatedAt >= date.Value.Date && t.CreatedAt < date.Value.Date.AddDays(1));
-            }
+                .Where(t => t.EmployeeId == id || t.It_PersonnelId == id);
 
             if (status.HasValue)
-            {
-                query = query.Where(t => t.Status == status);
-            }
+                query = query.Where(t => t.Status == status.Value);
 
-            return await query.ToListAsync();
+            if (d.HasValue)
+                query = query.Where(t => t.CreatedAt >= d.Value.Date && t.CreatedAt < d.Value.Date.AddDays(1));
+
+            if (department.HasValue)
+                query = query.Where(t => t.Department == department.Value);
+
+            if (category.HasValue)
+                query = query.Where(t => t.Category == category.Value);
+
+            if (priority.HasValue)
+                query = query.Where(t => t.Priority == priority.Value);
+
+            return query.ToList(); 
         }
 
 
 
-
-
-
-        //public IEnumerable<Ticket> SearchForEmployee(DateTime? d, Guid id, Status? status)
-        //{
-        //    // Base query
-        //    IQueryable<Ticket> query = dbContext.Tickets.Where(t => t.EmployeeId == id);
-
-        //    // Apply Status filter
-        //    if (status.HasValue)
-        //    {
-        //        query = query.Where(t => t.Status == status);
-        //    }
-
-        //    // Apply Date filter in a SQL-friendly way
-        //    if (d.HasValue)
-        //    {
-        //        DateTime startDate = d.Value.Date;
-        //        DateTime endDate = startDate.AddDays(1);
-
-        //        query = query.Where(t => t.CreatedAt >= startDate && t.CreatedAt < endDate);
-        //    }
-
-        //    return query.ToList(); // Execute query once after applying all filters
-        //}
-
-
-
-
-
-
-        public IEnumerable<Ticket>? SearchByDateAndIt(DateTime d, Guid id)
+        public string  AssignTicket (Guid id, int idd)
         {
-            var search = dbContext.Tickets.Where(ticket => ticket.CreatedAt.Date == d.Date && ticket.ITPersonelId == id).ToList();
+            var assign = dbContext.Tickets.Find(idd);
 
-            if (search is null)
+            if(assign is not null && assign.Status==Status.NOT_ACTIVE)
             {
-                return null;
+                assign.UpdatedAt = DateTime.Now;
+                assign.Status = Status.ACTIVE;
+                assign.It_PersonnelId = id;
+
+                dbContext.Tickets.Update(assign);
+
+                dbContext.SaveChanges();
+
+                return "Ticket assigned successfully";
             }
 
-            return search;
-
+            return "Invalid assignment!";
+            
         }
 
     }
