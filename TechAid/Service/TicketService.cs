@@ -1,7 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using TechAid.Data;
 using TechAid.Dto;
-using TechAid.Migrations;
 using TechAid.Models.Entity;
 using TechAid.Models.Enums;
 
@@ -78,32 +77,36 @@ namespace TechAid.Service
 
         public String MarkAsCompleted(Guid? id, int ticId)
         {
-            var ticketDetails = dbContext.Tickets.FirstOrDefault(ticket => ticket.Status == Status.ACTIVE && ticket.It_PersonnelId == id);
 
-            if (ticketDetails == null)
+            var ticketDetails = dbContext.Tickets.Find(ticId);
+
+            if (ticketDetails is null)
             {
-                return "Ticket does not exist";
+                return "Ticket does not exsist";
             }
 
-            if (ticketDetails.Id != ticId)
-            {
-                return "Ticket ID mismatch";
-            }
 
-            if (ticketDetails.Status != Status.ACTIVE)
+            else if (ticketDetails.Status is not Status.ACTIVE)
             {
                 return "Ticket is not active";
             }
 
+            else if (ticketDetails.It_PersonnelId != id)
+            {
+                return "Ticket does not belong to you";
+            }
+
+
             ticketDetails.Status = Status.COMPLETED;
+
             ticketDetails.UpdatedAt = DateTime.Now;
 
             dbContext.Tickets.Update(ticketDetails);
+
             dbContext.SaveChanges();
 
             return "Ticket marked as completed successfully";
         }
-
 
         public int? TotalTicket()
         {
