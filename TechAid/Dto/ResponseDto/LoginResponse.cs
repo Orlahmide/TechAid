@@ -1,4 +1,4 @@
-﻿namespace TechAid.Dto
+﻿namespace TechAid.Dto.ResponseDto
 {
     public class LoginResponse
     {

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using TechAid.Dto;
 using TechAid.Models.Enums;
 using TechAid.Service;
+using TechAid.Utils;
 
 namespace TechAid.Controllers
 {
@@ -62,11 +63,36 @@ namespace TechAid.Controllers
 
         [HttpPost]
         [Route("mark_as_completed")]
-        public IActionResult MackAsCompleted([FromQuery] Guid id, [FromQuery] int ticId)
+        public IActionResult MackAsCompleted( [FromQuery] int ticId)
         {
-            var newTicket = ticketService.MarkAsCompleted(id, ticId);
 
-            return Ok(newTicket);
+            var token = Request.Headers["Authorization"].ToString().Replace("Bearer ", "").Trim();
+
+            if (string.IsNullOrEmpty(token))
+            {
+                return Unauthorized("Missing or invalid Authorization header.");
+            }
+
+            try
+            {
+                var (employeeId, role) = TokenHelper.ExtractClaimsFromToken(token);
+
+                if (employeeId == null)
+                {
+                    return Unauthorized("Invalid token.");
+                }
+
+                var employee = ticketService.MarkAsCompleted(employeeId, ticId);
+
+
+                return Ok(employee);
+            }
+            catch (Exception ex)
+            {
+
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+            
         }
 
         [HttpGet]
@@ -105,37 +131,83 @@ namespace TechAid.Controllers
             return Ok(newTicket);
         }
 
-        [HttpGet]
-        [Route("get_by_date")]
-        public IActionResult GetByDate(DateTime d)
-        {
-            var newTicket = ticketService.SearchByDate(d.Date);
-
-            return Ok(newTicket);
-        }
-
+        
         [HttpGet("filter")]
         public IActionResult GetFilteredTickets(
          [FromQuery] DateTime? date,
-         [FromHeader] Guid employeeId,
          [FromQuery] Status? status,
          [FromQuery] Priority? priority,
          [FromQuery] Category? category,
          [FromQuery] Department? department)
         {
-            var tickets = ticketService.SearchForEmployee(date, employeeId, status, priority, category, department);
+            var authHeader = Request.Headers["Authorization"].ToString();
+
+            if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
+            {
+                return Unauthorized("Missing or invalid Authorization header.");
+            }
+
+            var token = authHeader.Substring("Bearer ".Length);
+            var (employeeId, role) = TokenHelper.ExtractClaimsFromToken(token);
+
+            if (employeeId == null)
+            {
+                return Unauthorized("Invalid token.");
+            }
+
+            var tickets = ticketService.Search(date, employeeId.Value, status, priority, category, department);
             return Ok(tickets);
         }
 
         [HttpPost]
         [Route("assign")]
         [Authorize(Roles = "IT_PERSONNEL")]
-        public IActionResult AssignTicket([FromQuery] Guid employeeId, [FromQuery] int ticketId)
+        public IActionResult AssignTicket([FromQuery] int ticketId)
         {
-            var employee = ticketService.AssignTicket(employeeId ,ticketId);
+            
+            var token = Request.Headers["Authorization"].ToString().Replace("Bearer ", "").Trim();
 
-            return Ok(employee);
+            if (string.IsNullOrEmpty(token))
+            {
+                return Unauthorized("Missing or invalid Authorization header.");
+            }
+
+            try
+            {
+                var (employeeId, role) = TokenHelper.ExtractClaimsFromToken(token);
+
+                if (employeeId == null)
+                {
+                    return Unauthorized("Invalid token.");
+                }
+
+                var employee = ticketService.AssignTicket(employeeId, ticketId);
+
+                
+                return Ok(employee);
+            }
+            catch (Exception ex)
+            {
+               
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+
+
         }
 
+
+        [HttpGet("filter_for_admin")]
+        [Authorize(Roles = "ADMIN")]
+        public IActionResult GetFilteredTicketsAdmin(
+         [FromQuery] DateTime? date,
+         [FromQuery] Status? status,
+         [FromQuery] Priority? priority,
+         [FromQuery] Category? category,
+         [FromQuery] Department? department)
+        {
+          
+            var tickets = ticketService.SearchForAdmin(date, status, priority, category, department);
+            return Ok(tickets);
+        }
     }
 }

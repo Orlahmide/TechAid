@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using TechAid.Data;
 using TechAid.Dto;
+using TechAid.Migrations;
 using TechAid.Models.Entity;
 using TechAid.Models.Enums;
 
@@ -75,27 +76,34 @@ namespace TechAid.Service
             return ticketDetails;
         }
 
-        public Ticket? MarkAsCompleted(Guid id, int ticId)
+        public String MarkAsCompleted(Guid? id, int ticId)
         {
+            var ticketDetails = dbContext.Tickets.FirstOrDefault(ticket => ticket.Status == Status.ACTIVE && ticket.It_PersonnelId == id);
 
-            var ticketDetails = dbContext.Tickets.FirstOrDefault(ticket => ticket.Status == Status.ACTIVE && ticket.EmployeeId == id);
-
-
-            if (ticketDetails is null)
+            if (ticketDetails == null)
             {
-                return null;
+                return "Ticket does not exist";
+            }
+
+            if (ticketDetails.Id != ticId)
+            {
+                return "Ticket ID mismatch";
+            }
+
+            if (ticketDetails.Status != Status.ACTIVE)
+            {
+                return "Ticket is not active";
             }
 
             ticketDetails.Status = Status.COMPLETED;
-
             ticketDetails.UpdatedAt = DateTime.Now;
 
             dbContext.Tickets.Update(ticketDetails);
-
             dbContext.SaveChanges();
 
-            return ticketDetails;
+            return "Ticket marked as completed successfully";
         }
+
 
         public int? TotalTicket()
         {
@@ -147,20 +155,8 @@ namespace TechAid.Service
             return count - countB - countA;
         }
 
-        public IEnumerable<Ticket>? SearchByDate(DateTime d)
-        {
-            var search = dbContext.Tickets.Where(tickt => tickt.CreatedAt.Date == d.Date);
 
-            if (search is null)
-            {
-                return null;
-            }
-
-            return search;
-
-        }
-
-        public IEnumerable<Ticket> SearchForEmployee(DateTime? d, Guid id, Status? status, Priority? priority, Category? category, Department? department)
+        public IEnumerable<Ticket> Search(DateTime? d, Guid id, Status? status, Priority? priority, Category? category, Department? department)
         {
             var query = dbContext.Tickets
                 .Where(t => t.EmployeeId == id || t.It_PersonnelId == id);
@@ -183,9 +179,31 @@ namespace TechAid.Service
             return query.ToList(); 
         }
 
+        public IEnumerable<Ticket> SearchForAdmin(DateTime? d, Status? status, Priority? priority, Category? category, Department? department)
+        {
+            var query = dbContext.Tickets.AsQueryable(); // Correct way to build a query
+
+            if (status.HasValue)
+                query = query.Where(t => t.Status == status.Value);
+
+            if (d.HasValue)
+                query = query.Where(t => t.CreatedAt >= d.Value.Date && t.CreatedAt < d.Value.Date.AddDays(1));
+
+            if (department.HasValue)
+                query = query.Where(t => t.Department == department.Value);
+
+            if (category.HasValue)
+                query = query.Where(t => t.Category == category.Value);
+
+            if (priority.HasValue)
+                query = query.Where(t => t.Priority == priority.Value);
+
+            return query.ToList(); // Execute the query
+        }
 
 
-        public string  AssignTicket (Guid id, int idd)
+
+        public string  AssignTicket (Guid? id, int idd)
         {
             var assign = dbContext.Tickets.Find(idd);
 
