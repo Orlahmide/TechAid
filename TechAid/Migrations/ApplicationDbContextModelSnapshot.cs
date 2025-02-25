@@ -31,6 +31,9 @@ namespace TechAid.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("Department")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -48,6 +51,10 @@ namespace TechAid.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Phone_number")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Role")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
@@ -57,43 +64,6 @@ namespace TechAid.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Employees");
-                });
-
-            modelBuilder.Entity("TechAid.Models.Entity.ITPersonel", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("First_name")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Last_name")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Password")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Phone_number")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("ITPersonels");
                 });
 
             modelBuilder.Entity("TechAid.Models.Entity.Ticket", b =>
@@ -126,7 +96,7 @@ namespace TechAid.Migrations
                     b.Property<Guid>("EmployeeId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid?>("ITPersonelId")
+                    b.Property<Guid?>("It_PersonnelId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Priority")
@@ -148,8 +118,6 @@ namespace TechAid.Migrations
 
                     b.HasIndex("EmployeeId");
 
-                    b.HasIndex("ITPersonelId");
-
                     b.ToTable("Tickets");
                 });
 
@@ -161,23 +129,12 @@ namespace TechAid.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("TechAid.Models.Entity.ITPersonel", "ItPersonnel")
-                        .WithMany("AssignedTickets")
-                        .HasForeignKey("ITPersonelId");
-
                     b.Navigation("Employee");
-
-                    b.Navigation("ItPersonnel");
                 });
 
             modelBuilder.Entity("TechAid.Models.Entity.Employee", b =>
                 {
                     b.Navigation("Tickets");
-                });
-
-            modelBuilder.Entity("TechAid.Models.Entity.ITPersonel", b =>
-                {
-                    b.Navigation("AssignedTickets");
                 });
 #pragma warning restore 612, 618
         }

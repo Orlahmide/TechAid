@@ -16,9 +16,6 @@ namespace TechAid.Data
         public DbSet<Ticket> Tickets { get; set; }
 
 
-
-        public DbSet<ITPersonel> ITPersonels { get; set; }
-
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<Ticket>()
@@ -42,6 +39,14 @@ namespace TechAid.Data
             modelBuilder.Entity<Ticket>()
                .Property(t => t.Status)
                .HasConversion<string>();
+
+            modelBuilder.Entity<Employee>()
+              .Property(t => t.Role)
+              .HasConversion<string>();
+
+            modelBuilder.Entity<Employee>()
+              .Property(t => t.Department)
+              .HasConversion<string>();
 
         }
 

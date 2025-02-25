@@ -1,4 +1,6 @@
-﻿namespace TechAid.Dto
+﻿using TechAid.Models.Enums;
+
+namespace TechAid.Dto
 {
     public class UpdateEmployeeDto
     {
