@@ -44,6 +44,9 @@ namespace TechAid.Data
               .Property(t => t.Role)
               .HasConversion<string>();
 
+            modelBuilder.Entity<Employee>()
+              .Property(t => t.Department)
+              .HasConversion<string>();
 
         }
 

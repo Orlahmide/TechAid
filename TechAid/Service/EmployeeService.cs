@@ -20,7 +20,7 @@ namespace TechAid.Service
             this.itoken = tokenGenerator;
         }
 
-        public Employee? AddEmployee(AddEmployeeDto addEmployeeDto)
+        public EmployeeResponse AddEmployee(AddEmployeeDto addEmployeeDto)
         {
             var user = dbContext.Employees.FirstOrDefault(e => e.Email.ToLower() == addEmployeeDto.Email.ToLower());
             if (user is not null)
@@ -53,16 +53,29 @@ namespace TechAid.Service
             }
 
             dbContext.Employees.Add(newEmployee);
-            dbContext.SaveChanges();
+            dbContext.SaveChanges(); 
 
-            return newEmployee;
+            return new EmployeeResponse{ first_name = newEmployee.First_name, last_name= newEmployee.Last_name,
+            CreatedAt = newEmployee.CreatedAt, email = newEmployee.Email, Phone_number = newEmployee.Phone_number, 
+            Id = newEmployee.Id, role = newEmployee.Role, Department= newEmployee.Department};
         }
 
-        public List<Employee> GetAllEmployees()
+        public List<EmployeeResponse> GetAllEmployees()
         {
-            var allEmployees = dbContext.Employees.ToList();
+            var employees = dbContext.Employees.ToList();
 
-            return allEmployees;
+            var employeeResponses = employees.Select(e => new EmployeeResponse
+            {
+                first_name = e.First_name,
+                last_name = e.Last_name,
+                CreatedAt = e.CreatedAt,
+                email = e.Email,
+                Phone_number = e.Phone_number,
+                Id = e.Id,
+                role = e.Role,
+            }).ToList();
+
+            return employeeResponses;
         }
 
         public Employee? GeEmployeeById(Guid id)
@@ -78,40 +91,70 @@ namespace TechAid.Service
         }
 
 
-        public Employee? UpdateEmployee(Guid id, UpdateEmployeeDto updateEmployeeDto)
+        public EmployeeResponse? UpdateEmployee(Guid? id, UpdateEmployeeDto updateEmployeeDto, Department? department)
         {
-            var update = dbContext.Employees.Find(id);
-
-            if (update is null)
+            if (id is null)
             {
-                return null;
+                throw new ArgumentException("Employee ID cannot be null.");
             }
 
-            if (!string.IsNullOrEmpty(updateEmployeeDto.Phone_number))
+            var update = dbContext.Employees.Find(id);
+            if (update is null)
+            {
+                return null; // Or throw an exception if preferred
+            }
+
+            // Update fields only if they have valid values
+            if (!string.IsNullOrWhiteSpace(updateEmployeeDto.Phone_number))
             {
                 update.Phone_number = updateEmployeeDto.Phone_number;
             }
 
-            if (!string.IsNullOrEmpty(updateEmployeeDto.Password))
+            if (!string.IsNullOrWhiteSpace(updateEmployeeDto.Password))
             {
                 update.Password = BCrypt.Net.BCrypt.HashPassword(updateEmployeeDto.Password);
             }
 
-            if (!string.IsNullOrEmpty(updateEmployeeDto.First_name))
+            if (!string.IsNullOrWhiteSpace(updateEmployeeDto.First_name))
             {
                 update.First_name = updateEmployeeDto.First_name;
             }
 
-            if (!string.IsNullOrEmpty(updateEmployeeDto.Last_name))
+            if (!string.IsNullOrWhiteSpace(updateEmployeeDto.Last_name))
             {
                 update.Last_name = updateEmployeeDto.Last_name;
             }
 
+            if (department is not null)
+            {
+                update.Department = department;
+            }
+
             update.UpdatedAt = DateTime.Now;
 
-            dbContext.SaveChanges();
+            try
+            {
+                dbContext.Employees.Update(update);
+                dbContext.SaveChanges();
 
-            return update;
+                return new EmployeeResponse
+                {
+                    Id = update.Id,
+                    first_name = update.First_name,
+                    last_name = update.Last_name,
+                    email = update.Email,
+                    Phone_number = update.Phone_number,
+                    Department = update.Department,
+                    CreatedAt = update.CreatedAt,
+                    UpdatedAt = update.UpdatedAt,
+                    role = update.Role,
+                };
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Error updating employee: {ex.Message}");
+                return null;
+            }
         }
 
 

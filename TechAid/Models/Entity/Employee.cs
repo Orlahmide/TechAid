@@ -27,6 +27,10 @@ namespace TechAid.Models.Entity
 
         public required DateTime UpdatedAt { get; set; }
 
+
+        [JsonConverter(typeof(JsonStringEnumConverter))]
+        public Department? Department { get; set; }
+
         [JsonConverter(typeof(JsonStringEnumConverter))]
         public required Role Role { get; set; }
 

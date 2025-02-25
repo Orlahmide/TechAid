@@ -1,14 +1,18 @@
 ﻿using Azure.Messaging;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using TechAid.Data;
 using TechAid.Dto;
 using TechAid.Models.Entity;
+using TechAid.Models.Enums;
 using TechAid.Service;
+using TechAid.Utils;
 
 namespace TechAid.Controllers
 {
+    [EnableCors("AllowAny")]
     [Route("api/[controller]")]
     [ApiController]
     public class EmployeesController : ControllerBase
@@ -52,16 +56,41 @@ namespace TechAid.Controllers
 
 
         [HttpPatch]
-        [Route("update/{id:guid}")]
-        public IActionResult UpdateEmployees(UpdateEmployeeDto updateEmployeeDto, Guid id)
+        [Route("update")]
+        public IActionResult UpdateEmployees(UpdateEmployeeDto updateEmployeeDto, Department? department)
         {
-            var employee = employeeService.UpdateEmployee(id, updateEmployeeDto);
 
-            return Ok(employee);
+            var token = Request.Headers["Authorization"].ToString().Replace("Bearer ", "").Trim();
+
+            if (string.IsNullOrEmpty(token))
+            {
+                return Unauthorized("Missing or invalid Authorization header.");
+            }
+
+            try
+            {
+                var (employeeId, role) = TokenHelper.ExtractClaimsFromToken(token);
+
+                if (employeeId == null)
+                {
+                    return Unauthorized("Invalid token.");
+                }
+
+               var employee = employeeService.UpdateEmployee(employeeId, updateEmployeeDto, department);
+
+                return Ok(employee);
+            }
+            catch (Exception ex)
+            {
+
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+
         }
 
         [HttpDelete]
         [Route("{id:guid}")]
+        [Authorize (Roles = "ADMIN")]
         public IActionResult DeleteEmployeesById(Guid id)
         {
             var employee = employeeService.DeleteEmployee(id);

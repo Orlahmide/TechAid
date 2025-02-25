@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using TechAid.Data;
 using TechAid.Dto;
+using TechAid.Dto.ResponseDto;
 using TechAid.Models.Entity;
 using TechAid.Models.Enums;
 
@@ -15,7 +16,7 @@ namespace TechAid.Service
             this.dbContext = dbContext;
         }
 
-        public Ticket? CreateTicket(CreateTicketDto createTicketDto, Guid employeeId, Department department, Priority priority, Category category)
+        public Ticket? CreateTicket(CreateTicketDto createTicketDto, Guid? employeeId, Department department, Priority priority, Category category)
         {
             var user = dbContext.Employees.Find(employeeId);
             if (user == null) return null;
@@ -132,9 +133,9 @@ namespace TechAid.Service
             return count;
         }
 
-        public int? TotalCompleted()
+        public int? TotalNotActiveForIt()
         {
-            var count = dbContext.Tickets.Where(ticket => ticket.Status == Status.COMPLETED).Count();
+            var count = dbContext.Tickets.Where(ticket => ticket.Status == Status.NOT_ACTIVE).Count();
 
             if (count == 0)
             {
@@ -143,21 +144,6 @@ namespace TechAid.Service
 
             return count;
         }
-
-        public int? TotalUnassigned()
-        {
-            var count = dbContext.Tickets.Count();
-            var countA = dbContext.Tickets.Where(ticket => ticket.Status == Status.COMPLETED).Count();
-            var countB = dbContext.Tickets.Where(ticket => ticket.Status == Status.ACTIVE).Count();
-
-            if (count == 0)
-            {
-                return null;
-            }
-
-            return count - countB - countA;
-        }
-
 
         public IEnumerable<Ticket> Search(DateTime? d, Guid id, Status? status, Priority? priority, Category? category, Department? department)
         {
@@ -205,7 +191,6 @@ namespace TechAid.Service
         }
 
 
-
         public string  AssignTicket (Guid? id, int idd)
         {
             var assign = dbContext.Tickets.Find(idd);
@@ -227,5 +212,68 @@ namespace TechAid.Service
             
         }
 
+        public CountResponseDto GetAllCountById(Guid? id, string filter, DateOnly date)
+        {
+            if (id is null)
+            {
+                throw new ArgumentException("ID cannot be null.");
+            }
+
+            // Get the date range based on the filter
+            DateTime startDate = filter.ToLower() switch
+            {
+                "set" => date.ToDateTime(TimeOnly.MinValue),
+                "day" => DateTime.UtcNow.Date,
+                "week" => DateTime.UtcNow.Date.AddDays(-7),
+                "month" => DateTime.UtcNow.Date.AddMonths(-1),
+                "none" => DateTime.MinValue,
+                _ => throw new ArgumentException("Invalid filter value.")
+            };
+
+            var query = dbContext.Tickets.Where(t => (t.EmployeeId == id || t.It_PersonnelId == id));
+
+            if (filter.ToLower() == "set")
+            {
+                // Filter to match exactly the date part only
+                query = query.Where(t => t.CreatedAt.Date == date.ToDateTime(TimeOnly.MinValue).Date);
+            }
+            else if (startDate != DateTime.MinValue)
+            {
+                query = query.Where(t => t.CreatedAt >= startDate);
+            }
+
+            var allTicket = query.Count();
+            var activeTicket = query.Where(t => t.Status == Status.ACTIVE).Count();
+            var notActiveTicket = query.Where(t => t.Status == Status.NOT_ACTIVE).Count();
+            var completedTicket = query.Where(t => t.Status == Status.COMPLETED).Count();
+
+            return new CountResponseDto()
+            {
+                ActivelNumber = activeTicket,
+                TotalNumber = allTicket,
+                CompletedNumber = completedTicket,
+                NotActiveNumber = notActiveTicket
+            };
+        }
+
+
+
+        public CountResponseDto GetAllCount()
+        {
+            var count = dbContext.Tickets.Count();
+            var countA = dbContext.Tickets.Where(ticket => ticket.Status == Status.COMPLETED).Count();
+            var countB = dbContext.Tickets.Where(ticket => ticket.Status == Status.ACTIVE).Count();
+            var countC = dbContext.Tickets.Where(ticket => ticket.Status == Status.NOT_ACTIVE).Count();
+
+            var response = new CountResponseDto()
+            {
+                ActivelNumber = countB,
+                TotalNumber = count,
+                CompletedNumber = countA,
+                NotActiveNumber = countC
+            };
+
+            return response;
+        }
     }
 }

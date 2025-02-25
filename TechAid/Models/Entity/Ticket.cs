@@ -2,7 +2,6 @@
 using System.ComponentModel.DataAnnotations;
 using TechAid.Models.Enums;
 using System.Text.Json.Serialization;
-using TechAid.Migrations;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace TechAid.Models.Entity
