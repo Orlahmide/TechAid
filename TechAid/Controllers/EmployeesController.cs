@@ -113,6 +113,26 @@ namespace TechAid.Controllers
             return Ok(employee);
         }
 
+
+        [AllowAnonymous]
+        [HttpPost]
+        [Route("logout")]
+         public IActionResult LogoutEmployee(Guid id)
+        {
+            var employee = employeeService.Logout(id);
+
+            if (employee is null)
+            {
+                return BadRequest("Employee not found");
+            }
+
+            return Ok(employee);
+        }
+
+
+
+        
+
        
 
 

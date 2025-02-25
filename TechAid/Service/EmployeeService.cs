@@ -14,6 +14,8 @@ namespace TechAid.Service
         private readonly ApplicationDbContext dbContext;
         private readonly ITokenGenerator itoken;
 
+         private readonly IConfiguration configuration;
+
         public EmployeeService(ApplicationDbContext dbContext, ITokenGenerator tokenGenerator)
         {
             this.dbContext = dbContext;
@@ -178,22 +180,45 @@ namespace TechAid.Service
         {
             var user = dbContext.Employees.FirstOrDefault(e => e.Email.ToLower() == loginDto.Email.ToLower());
 
-            if (user == null)
+            if (user == null || !BCrypt.Net.BCrypt.Verify(loginDto.Password, user.Password))
             {
-                return new LoginResponse { Confirmation = "Invalid credentials", Token = null };
+                return new LoginResponse { Confirmation = "Invalid credentials", Token = null, RefreshToken = null };
             }
 
-            if (BCrypt.Net.BCrypt.Verify(loginDto.Password, user.Password) && user.Email==loginDto.Email)
-            {
-                var token = itoken.GenerateToken(user.Id, user.Role);
-                return new LoginResponse { Confirmation = "Login successful", Token = token };
-                
-            }
+            var accessToken = itoken.GenerateAccessToken(user.Id, user.Role);
+            var refreshToken = itoken.GenerateRefreshToken();
 
-            return new LoginResponse { Confirmation = "Login failed", Token = null };
+            user.RefreshToken = refreshToken;
+            user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(int.Parse(configuration["JwtSettings:RefreshTokenExpiryDays"]));
+
+            dbContext.SaveChanges();
+
+            return new LoginResponse
+            {
+                Confirmation = "Login successful",
+                Token = accessToken,
+                RefreshToken = refreshToken
+            };
         }
 
-     
+          public string Logout(Guid userId)
+        {
+            var user = dbContext.Employees.Find(userId);
+
+            if (user == null)
+            {
+                return "User not found";
+            }
+
+            user.RefreshToken = null;
+            user.RefreshTokenExpiryTime = null;
+
+            dbContext.SaveChanges();
+
+            return "User logged out successfully";
+        }
 
     }
+
+    
 }

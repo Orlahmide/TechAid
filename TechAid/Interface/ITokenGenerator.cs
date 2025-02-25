@@ -5,6 +5,7 @@ namespace TechAid.Interface
 {
     public interface ITokenGenerator
     {
-        public string GenerateToken(Guid userId, Role role);
+        public string GenerateAccessToken(Guid userId, Role role);
+        string GenerateRefreshToken();
     }
 }
