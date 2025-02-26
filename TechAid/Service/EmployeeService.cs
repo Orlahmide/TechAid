@@ -16,10 +16,11 @@ namespace TechAid.Service
 
          private readonly IConfiguration configuration;
 
-        public EmployeeService(ApplicationDbContext dbContext, ITokenGenerator tokenGenerator)
+        public EmployeeService(ApplicationDbContext dbContext, ITokenGenerator tokenGenerator, IConfiguration configuration)
         {
             this.dbContext = dbContext;
             this.itoken = tokenGenerator;
+            this.configuration = configuration;
         }
 
         public EmployeeResponse AddEmployee(AddEmployeeDto addEmployeeDto)
@@ -40,7 +41,7 @@ namespace TechAid.Service
                 Last_name = addEmployeeDto.Last_name,
                 CreatedAt = DateTime.Now,
                 UpdatedAt = DateTime.Now,
-                Role = addEmployeeDto.Role,
+                Role = addEmployeeDto.Role
             };
 
            
@@ -178,30 +179,44 @@ namespace TechAid.Service
 
         public LoginResponse? Login(LoginDto loginDto)
         {
-            var user = dbContext.Employees.FirstOrDefault(e => e.Email.ToLower() == loginDto.Email.ToLower());
+            var user = dbContext.Employees
+                .FirstOrDefault(e => e.Email.ToLower() == loginDto.Email.ToLower());
 
             if (user == null || !BCrypt.Net.BCrypt.Verify(loginDto.Password, user.Password))
             {
-                return new LoginResponse { Confirmation = "Invalid credentials", Token = null, RefreshToken = null };
+                return new LoginResponse { Confirmation = "Invalid credentials", Token = null};
             }
 
             var accessToken = itoken.GenerateAccessToken(user.Id, user.Role);
             var refreshToken = itoken.GenerateRefreshToken();
 
+            // Set refresh token and expiry
             user.RefreshToken = refreshToken;
-            user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(int.Parse(configuration["JwtSettings:RefreshTokenExpiryDays"]));
+            user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(
+                int.TryParse(configuration["JwtSettings:RefreshTokenExpiryDays"], out int expiryDays) ? expiryDays : 7
+            );
 
-            dbContext.SaveChanges();
+            try
+            {
+                dbContext.SaveChanges();
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Error saving login state: {ex.Message}");
+                return new LoginResponse { Confirmation = "Login failed", Token = null};
+            }
 
             return new LoginResponse
             {
                 Confirmation = "Login successful",
                 Token = accessToken,
-                RefreshToken = refreshToken
+                Role = user.Role,
+                RefreshToken = user.RefreshToken
             };
         }
 
-          public string Logout(Guid userId)
+
+        public string Logout(Guid? userId)
         {
             var user = dbContext.Employees.Find(userId);
 
@@ -213,12 +228,19 @@ namespace TechAid.Service
             user.RefreshToken = null;
             user.RefreshTokenExpiryTime = null;
 
-            dbContext.SaveChanges();
-
-            return "User logged out successfully";
+            try
+            {
+                dbContext.SaveChanges();
+                return "User logged out successfully";
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Error logging out: {ex.Message}");
+                return "Logout failed";
+            }
         }
 
     }
 
-    
+
 }

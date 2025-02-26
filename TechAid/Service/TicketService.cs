@@ -165,7 +165,7 @@ namespace TechAid.Service
             if (priority.HasValue)
                 query = query.Where(t => t.Priority == priority.Value);
 
-            return query.ToList(); 
+            return query.ToList();
         }
 
         public IEnumerable<Ticket> SearchForAdmin(DateTime? d, Status? status, Priority? priority, Category? category, Department? department)
@@ -191,11 +191,11 @@ namespace TechAid.Service
         }
 
 
-        public string  AssignTicket (Guid? id, int idd)
+        public string AssignTicket(Guid? id, int idd)
         {
             var assign = dbContext.Tickets.Find(idd);
 
-            if(assign is not null && assign.Status==Status.NOT_ACTIVE)
+            if (assign is not null && assign.Status == Status.NOT_ACTIVE)
             {
                 assign.UpdatedAt = DateTime.Now;
                 assign.Status = Status.ACTIVE;
@@ -209,7 +209,7 @@ namespace TechAid.Service
             }
 
             return "Invalid assignment!";
-            
+
         }
 
         public CountResponseDto GetAllCountById(Guid? id, string filter, DateOnly date)
@@ -257,23 +257,44 @@ namespace TechAid.Service
         }
 
 
-
-        public CountResponseDto GetAllCount()
+        public CountResponseDto GetAllCount(string filter, DateOnly date)
         {
-            var count = dbContext.Tickets.Count();
-            var countA = dbContext.Tickets.Where(ticket => ticket.Status == Status.COMPLETED).Count();
-            var countB = dbContext.Tickets.Where(ticket => ticket.Status == Status.ACTIVE).Count();
-            var countC = dbContext.Tickets.Where(ticket => ticket.Status == Status.NOT_ACTIVE).Count();
-
-            var response = new CountResponseDto()
+            // Get the date range based on the filter
+            DateTime startDate = filter.ToLower() switch
             {
-                ActivelNumber = countB,
-                TotalNumber = count,
-                CompletedNumber = countA,
-                NotActiveNumber = countC
+                "set" => date.ToDateTime(TimeOnly.MinValue),
+                "day" => DateTime.UtcNow.Date,
+                "week" => DateTime.UtcNow.Date.AddDays(-7),
+                "month" => DateTime.UtcNow.Date.AddMonths(-1),
+                "none" => DateTime.MinValue,
+                _ => throw new ArgumentException("Invalid filter value.")
             };
 
-            return response;
+            var query = dbContext.Tickets.AsQueryable();
+
+            if (filter.ToLower() == "set")
+            {
+                // Filter to match exactly the date part only
+                query = query.Where(t => t.CreatedAt.Date == date.ToDateTime(TimeOnly.MinValue).Date);
+            }
+            else if (startDate != DateTime.MinValue)
+            {
+                query = query.Where(t => t.CreatedAt >= startDate);
+            }
+
+            var allTicket = query.Count();
+            var activeTicket = query.Count(t => t.Status == Status.ACTIVE);
+            var notActiveTicket = query.Count(t => t.Status == Status.NOT_ACTIVE);
+            var completedTicket = query.Count(t => t.Status == Status.COMPLETED);
+
+            return new CountResponseDto()
+            {
+                ActivelNumber = activeTicket,
+                TotalNumber = allTicket,
+                CompletedNumber = completedTicket,
+                NotActiveNumber = notActiveTicket
+            };
         }
+
     }
 }
