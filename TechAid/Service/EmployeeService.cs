@@ -81,7 +81,7 @@ namespace TechAid.Service
             return employeeResponses;
         }
 
-        public Employee? GeEmployeeById(Guid id)
+        public Employee? GeEmployeeById(Guid? id)
         {
             var employee = dbContext.Employees.Find(id);
 

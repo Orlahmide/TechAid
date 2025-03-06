@@ -12,8 +12,8 @@ using TechAid.Data;
 namespace TechAid.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250225175353_logout")]
-    partial class logout
+    [Migration("20250306114106_make attackment null")]
+    partial class makeattackmentnull
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -84,11 +84,13 @@ namespace TechAid.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Attachment")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Category")
                         .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Comment")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("CreatedAt")

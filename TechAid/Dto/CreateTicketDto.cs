@@ -8,7 +8,7 @@ namespace TechAid.Dto
 
         public required string Description { get; set; }
 
-        public required string Attachment { get; set; }
+        public string? Attachment { get; set; }
 
     }
 }

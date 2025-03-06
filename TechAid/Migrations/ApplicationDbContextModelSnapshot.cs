@@ -81,11 +81,13 @@ namespace TechAid.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Attachment")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Category")
                         .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Comment")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("CreatedAt")
@@ -124,6 +126,8 @@ namespace TechAid.Migrations
 
                     b.HasIndex("EmployeeId");
 
+                    b.HasIndex("It_PersonnelId");
+
                     b.ToTable("Tickets");
                 });
 
@@ -135,7 +139,13 @@ namespace TechAid.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("TechAid.Models.Entity.Employee", "ItPersonnel")
+                        .WithMany()
+                        .HasForeignKey("It_PersonnelId");
+
                     b.Navigation("Employee");
+
+                    b.Navigation("ItPersonnel");
                 });
 
             modelBuilder.Entity("TechAid.Models.Entity.Employee", b =>

@@ -14,7 +14,7 @@ namespace TechAid.Models.Entity
 
         public required string Subject { get; set; }
         public required string Description { get; set; }
-        public required string Attachment { get; set; }
+        public string? Attachment { get; set; }
 
         [JsonConverter(typeof(JsonStringEnumConverter))]
         public required Category Category { get; set; }
@@ -38,6 +38,13 @@ namespace TechAid.Models.Entity
 
         [ForeignKey("EmployeeId")]
         public Employee? Employee { get; set; }
+
+        [ForeignKey("It_PersonnelId")]
+        public Employee? ItPersonnel { get; set; }
+
+
+
+        public String? Comment { get; set; }
 
     
     }

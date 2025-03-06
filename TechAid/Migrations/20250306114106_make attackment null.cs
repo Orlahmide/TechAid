@@ -5,7 +5,7 @@
 namespace TechAid.Migrations
 {
     /// <inheritdoc />
-    public partial class @null : Migration
+    public partial class makeattackmentnull : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -17,31 +17,11 @@ namespace TechAid.Migrations
                 nullable: true,
                 oldClrType: typeof(string),
                 oldType: "nvarchar(max)");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Tickets_It_PersonnelId",
-                table: "Tickets",
-                column: "It_PersonnelId");
-
-            migrationBuilder.AddForeignKey(
-                name: "FK_Tickets_Employees_It_PersonnelId",
-                table: "Tickets",
-                column: "It_PersonnelId",
-                principalTable: "Employees",
-                principalColumn: "Id");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropForeignKey(
-                name: "FK_Tickets_Employees_It_PersonnelId",
-                table: "Tickets");
-
-            migrationBuilder.DropIndex(
-                name: "IX_Tickets_It_PersonnelId",
-                table: "Tickets");
-
             migrationBuilder.AlterColumn<string>(
                 name: "Attachment",
                 table: "Tickets",

@@ -43,11 +43,36 @@ namespace TechAid.Controllers
         }
 
         [HttpGet]
-        [Route("{id:guid}")]
-        public IActionResult GetEmployeesById(Guid id)
+        [Route("get_employee_id")]
+        public IActionResult GetEmployeesById()
         {
-             return Ok(employeeService.GeEmployeeById(id));
+            var token = Request.Headers["Authorization"].ToString().Replace("Bearer ", "").Trim();
+
+            if (string.IsNullOrEmpty(token))
+            {
+                return Unauthorized("Missing or invalid Authorization header.");
+            }
+
+            try
+            {
+                var (employeeId, role) = TokenHelper.ExtractClaimsFromToken(token);
+
+                if (employeeId == null)
+                {
+                    return Unauthorized("Invalid token.");
+                }
+
+                return Ok(employeeService.GeEmployeeById(employeeId));
+            }
+            catch (Exception ex)
+            {
+
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+            
         }
+
+
 
         [HttpPost]
         public IActionResult AddEmployee([FromBody] AddEmployeeDto addEmployeeDto)

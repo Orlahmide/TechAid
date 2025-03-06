@@ -21,11 +21,11 @@ namespace TechAid.Dto.ResponseDto
 
         public required DateTime CreatedAt { get; set; }
 
-        public required DateTime UpdateddAt { get; set; }
+        public required DateTime UpdatedAt { get; set; }
 
         public  string? FirstName { get; set; }
 
-        public  string? LateName { get; set; }
+        public  string? LastName { get; set; }
 
         public string? PhoneNumber { get; set; }
 
@@ -39,6 +39,8 @@ namespace TechAid.Dto.ResponseDto
 
 
         public string? IT_Personel_Email { get; set; }
+
+        
 
 
 

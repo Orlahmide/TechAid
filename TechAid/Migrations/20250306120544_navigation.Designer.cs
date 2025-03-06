@@ -12,8 +12,8 @@ using TechAid.Data;
 namespace TechAid.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250301000058_comment")]
-    partial class comment
+    [Migration("20250306120544_navigation")]
+    partial class navigation
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

@@ -88,7 +88,7 @@ namespace TechAid.Controllers
 
         [HttpPost]
         [Route("mark_as_completed")]
-        public IActionResult MarkAsCompleted([FromQuery] int ticId)
+        public IActionResult MarkAsCompleted([FromQuery] int ticId, string comment)
         {
 
             var token = Request.Headers["Authorization"].ToString().Replace("Bearer ", "").Trim();
@@ -107,7 +107,7 @@ namespace TechAid.Controllers
                     return Unauthorized("Invalid token.");
                 }
 
-                var employee = ticketService.MarkAsCompleted(employeeId, ticId);
+                var employee = ticketService.MarkAsCompleted(employeeId, ticId, comment);
 
 
                 return Ok(employee);
@@ -175,7 +175,7 @@ namespace TechAid.Controllers
         }
 
         [HttpGet("filter_for_admin")]
-        [Authorize(Roles = "ADMIN")]
+        [Authorize(Roles = "ADMIN, IT_PERSONNEL")]
         public IActionResult GetFilteredTicketsAdmin(
          [FromQuery] DateTime? date,
          [FromQuery] Status? status,
@@ -225,7 +225,7 @@ namespace TechAid.Controllers
         }
         [HttpGet]
         [Route("count_all_by_id")]
-        public IActionResult CountAllById(string filter, [FromQuery]DateOnly date)
+        public IActionResult CountAllById(string filter, [FromQuery] DateOnly date)
         {
 
             var token = Request.Headers["Authorization"].ToString().Replace("Bearer ", "").Trim();
@@ -260,7 +260,7 @@ namespace TechAid.Controllers
 
         [HttpGet]
         [Route("count_all")]
-        [Authorize(Roles = "ADMIN")]
+        [Authorize(Roles = "ADMIN , IT_PERSONNEL")]
         public IActionResult GetAllTicketCounts([FromQuery] string filter, [FromQuery] DateOnly? date)
         {
             try
@@ -276,6 +276,24 @@ namespace TechAid.Controllers
             {
                 return StatusCode(500, new { message = "An error occurred.", error = ex.Message });
             }
+        }
+
+        [HttpGet]
+        [Route("get_ticket_by_id/")]
+        public IActionResult GetTicketById([FromQuery]int Id)
+        {
+            var result = ticketService.GetTicketById(Id);
+
+            return Ok(result);
+        }
+
+        [HttpGet]
+        [Route("get_ticket_by_id_it/")]
+        public IActionResult GetTicketByIdIt([FromQuery] int Id)
+        {
+            var result = ticketService.GetTicketById(Id);
+
+            return Ok(result);
         }
     }
 }

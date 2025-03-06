@@ -76,7 +76,7 @@ namespace TechAid.Service
             return ticketDetails;
         }
 
-        public String MarkAsCompleted(Guid? id, int ticId)
+        public String MarkAsCompleted(Guid? id, int ticId, string comment)
         {
 
             var ticketDetails = dbContext.Tickets.Find(ticId);
@@ -97,7 +97,7 @@ namespace TechAid.Service
                 return "Ticket does not belong to you";
             }
 
-
+            ticketDetails.Comment = comment;
             ticketDetails.Status = Status.COMPLETED;
 
             ticketDetails.UpdatedAt = DateTime.Now;
@@ -145,10 +145,31 @@ namespace TechAid.Service
             return count;
         }
 
-        public IEnumerable<Ticket> Search(DateTime? d, Guid id, Status? status, Priority? priority, Category? category, Department? department)
+        public IEnumerable<TicketResponseDto> Search(DateTime? d, Guid id, Status? status, Priority? priority, Category? category, Department? department)
         {
             var query = dbContext.Tickets
-                .Where(t => t.EmployeeId == id || t.It_PersonnelId == id);
+                .Where(t => t.EmployeeId == id || t.It_PersonnelId == id)
+                .Select(t => new TicketResponseDto
+                {
+                    TicketId = t.Id,
+                    Subject = t.Subject,
+                    Description = t.Description,
+                    Attachment = t.Attachment,
+                    Category = t.Category,
+                    Department = t.Department,
+                    Priority = t.Priority,
+                    Status = t.Status,
+                    CreatedAt = t.CreatedAt,
+                    UpdatedAt = t.UpdatedAt,
+                    FirstName = t.Employee != null ? t.Employee.First_name : null,
+                    LastName = t.Employee != null ? t.Employee.Last_name : null,
+                    PhoneNumber = t.Employee != null ? t.Employee.Phone_number : null,
+                    Email = t.Employee != null ? t.Employee.Email : null,
+                    IT_Personel_FirstName = t.ItPersonnel != null ? t.ItPersonnel.First_name : null,
+                    IT_Personel_LastName = t.ItPersonnel != null ? t.ItPersonnel.Last_name : null,
+                    IT_Personel_Email = t.ItPersonnel != null ? t.ItPersonnel.Email : null,
+                    Comment = t.Comment
+                });
 
             if (status.HasValue)
                 query = query.Where(t => t.Status == status.Value);
@@ -168,9 +189,10 @@ namespace TechAid.Service
             return query.ToList();
         }
 
-        public IEnumerable<Ticket> SearchForAdmin(DateTime? d, Status? status, Priority? priority, Category? category, Department? department)
+
+        public IEnumerable<TicketResponseDto> SearchForAdmin(DateTime? d, Status? status, Priority? priority, Category? category, Department? department)
         {
-            var query = dbContext.Tickets.AsQueryable(); // Correct way to build a query
+            var query = dbContext.Tickets.AsQueryable();
 
             if (status.HasValue)
                 query = query.Where(t => t.Status == status.Value);
@@ -187,8 +209,30 @@ namespace TechAid.Service
             if (priority.HasValue)
                 query = query.Where(t => t.Priority == priority.Value);
 
-            return query.ToList(); // Execute the query
+            return query.Select(t => new TicketResponseDto
+            {
+                TicketId = t.Id,
+                Subject = t.Subject,
+                Description = t.Description,
+                Attachment = t.Attachment,
+                Category = t.Category,
+                Department = t.Department,
+                Priority = t.Priority,
+                Status = t.Status,
+                CreatedAt = t.CreatedAt,
+                UpdatedAt = t.UpdatedAt, // Fixed typo: UpdateddAt -> UpdatedAt
+                FirstName = t.Employee.First_name,
+                LastName = t.Employee.Last_name, // Fixed typo: LateName -> LastName
+                PhoneNumber = t.Employee.Phone_number,
+                Email = t.Employee.Email,
+                IT_Personel_FirstName = t.ItPersonnel != null ? t.ItPersonnel.First_name : null,
+                IT_Personel_LastName = t.ItPersonnel != null ? t.ItPersonnel.Last_name : null,
+                IT_Personel_Email = t.ItPersonnel != null ? t.ItPersonnel.Email : null,
+                Comment = t.Comment
+            }).ToList();
         }
+
+
 
 
         public string AssignTicket(Guid? id, int idd)
@@ -295,6 +339,41 @@ namespace TechAid.Service
                 NotActiveNumber = notActiveTicket
             };
         }
+
+
+        public TicketResponseDto? GetTicketById(int ticketId)
+        {
+            var ticket = dbContext.Tickets
+                .Include(t => t.Employee)   // Ensure Employee data is loaded
+                .Include(t => t.ItPersonnel) // Ensure IT Personnel data is loaded
+                .Where(t => t.Id == ticketId)
+                .Select(t => new TicketResponseDto
+                {
+                    TicketId = t.Id,
+                    Subject = t.Subject,
+                    Description = t.Description,
+                    Attachment = t.Attachment,
+                    Category = t.Category,
+                    Department = t.Department,
+                    Priority = t.Priority,
+                    Status = t.Status,
+                    CreatedAt = t.CreatedAt,
+                    UpdatedAt = t.UpdatedAt,
+                    FirstName = t.Employee != null ? t.Employee.First_name : null,
+                    LastName = t.Employee != null ? t.Employee.Last_name : null,
+                    PhoneNumber = t.Employee != null ? t.Employee.Phone_number : null,
+                    Email = t.Employee != null ? t.Employee.Email : null,
+                    IT_Personel_FirstName = t.ItPersonnel != null ? t.ItPersonnel.First_name : null,
+                    IT_Personel_LastName = t.ItPersonnel != null ? t.ItPersonnel.Last_name : null,
+                    IT_Personel_Email = t.ItPersonnel != null ? t.ItPersonnel.Email : null,
+                    Comment = t.Comment
+                })
+                .FirstOrDefault();
+
+            return ticket;
+        }
+
+
 
     }
 }
