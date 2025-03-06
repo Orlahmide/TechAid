@@ -17,9 +17,10 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAny", policy =>
     {
-        policy.AllowAnyOrigin()   // Allow requests from any origin
+        policy.WithOrigins("http://localhost:3000")
               .AllowAnyMethod()   // Allow any HTTP method (GET, POST, etc.)
-              .AllowAnyHeader();  // Allow any headers
+              .AllowAnyHeader()
+               .AllowCredentials();  // Allow any headers
     });
 });
 
@@ -57,21 +58,36 @@ builder.Services.AddScoped<TicketService>();
 builder.Services.AddScoped<ITokenGenerator, TokenGenerator>();
 
 // Add JWT authentication services
-builder.Services.AddAuthentication(x =>
-{
-    x.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    x.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(opt => opt.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
-{
-    ValidateIssuer = true,
-    ValidateAudience = true,
-    ValidateLifetime = true,
-    ValidateIssuerSigningKey = true,
-    ValidIssuer = builder.Configuration.GetSection("JwtSettings:Issuer").Value,
-    ValidAudience = builder.Configuration.GetSection("JwtSettings:Audience").Value,
-    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration.GetSection("JwtSettings:SecretKey").Value))
-});
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateIssuerSigningKey = true,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.Zero, // Ensures expired tokens are rejected immediately
+            ValidIssuer = builder.Configuration["JwtSettings:Issuer"],
+            ValidAudience = builder.Configuration["JwtSettings:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(builder.Configuration["JwtSettings:SecretKey"])
+            )
+        };
+
+        options.Events = new JwtBearerEvents
+        {
+            OnAuthenticationFailed = context =>
+            {
+                if (context.Exception is SecurityTokenExpiredException)
+                {
+                    context.Response.Headers.Add("Token-Expired", "true");
+                    context.Response.StatusCode = 401;
+                }
+                return Task.CompletedTask;
+            }
+        };
+    });
 
 // Add database context (Entity Framework)
 builder.Services.AddDbContext<ApplicationDbContext>(options =>

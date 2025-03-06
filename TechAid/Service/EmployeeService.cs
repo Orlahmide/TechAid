@@ -14,10 +14,13 @@ namespace TechAid.Service
         private readonly ApplicationDbContext dbContext;
         private readonly ITokenGenerator itoken;
 
-        public EmployeeService(ApplicationDbContext dbContext, ITokenGenerator tokenGenerator)
+         private readonly IConfiguration configuration;
+
+        public EmployeeService(ApplicationDbContext dbContext, ITokenGenerator tokenGenerator, IConfiguration configuration)
         {
             this.dbContext = dbContext;
             this.itoken = tokenGenerator;
+            this.configuration = configuration;
         }
 
         public EmployeeResponse AddEmployee(AddEmployeeDto addEmployeeDto)
@@ -38,7 +41,7 @@ namespace TechAid.Service
                 Last_name = addEmployeeDto.Last_name,
                 CreatedAt = DateTime.Now,
                 UpdatedAt = DateTime.Now,
-                Role = addEmployeeDto.Role,
+                Role = addEmployeeDto.Role
             };
 
            
@@ -176,24 +179,68 @@ namespace TechAid.Service
 
         public LoginResponse? Login(LoginDto loginDto)
         {
-            var user = dbContext.Employees.FirstOrDefault(e => e.Email.ToLower() == loginDto.Email.ToLower());
+            var user = dbContext.Employees
+                .FirstOrDefault(e => e.Email.ToLower() == loginDto.Email.ToLower());
+
+            if (user == null || !BCrypt.Net.BCrypt.Verify(loginDto.Password, user.Password))
+            {
+                return new LoginResponse { Confirmation = "Invalid credentials", Token = null};
+            }
+
+            var accessToken = itoken.GenerateAccessToken(user.Id, user.Role);
+            var refreshToken = itoken.GenerateRefreshToken();
+
+            // Set refresh token and expiry
+            user.RefreshToken = refreshToken;
+            user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(
+                int.TryParse(configuration["JwtSettings:RefreshTokenExpiryDays"], out int expiryDays) ? expiryDays : 7
+            );
+
+            try
+            {
+                dbContext.SaveChanges();
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Error saving login state: {ex.Message}");
+                return new LoginResponse { Confirmation = "Login failed", Token = null};
+            }
+
+            return new LoginResponse
+            {
+                Confirmation = "Login successful",
+                Token = accessToken,
+                Role = user.Role,
+                RefreshToken = user.RefreshToken
+            };
+        }
+
+
+        public string Logout(Guid? userId)
+        {
+            var user = dbContext.Employees.Find(userId);
 
             if (user == null)
             {
-                return new LoginResponse { Confirmation = "Invalid credentials", Token = null };
+                return "User not found";
             }
 
-            if (BCrypt.Net.BCrypt.Verify(loginDto.Password, user.Password) && user.Email==loginDto.Email)
+            user.RefreshToken = null;
+            user.RefreshTokenExpiryTime = null;
+
+            try
             {
-                var token = itoken.GenerateToken(user.Id, user.Role);
-                return new LoginResponse { Confirmation = "Login successful", Token = token };
-                
+                dbContext.SaveChanges();
+                return "User logged out successfully";
             }
-
-            return new LoginResponse { Confirmation = "Login failed", Token = null };
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Error logging out: {ex.Message}");
+                return "Logout failed";
+            }
         }
 
-     
-
     }
+
+
 }

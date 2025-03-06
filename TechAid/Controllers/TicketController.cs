@@ -225,7 +225,7 @@ namespace TechAid.Controllers
         }
         [HttpGet]
         [Route("count_all_by_id")]
-        public IActionResult CountAllById(string filter, DateOnly date)
+        public IActionResult CountAllById(string filter, [FromQuery]DateOnly date)
         {
 
             var token = Request.Headers["Authorization"].ToString().Replace("Bearer ", "").Trim();
@@ -257,14 +257,26 @@ namespace TechAid.Controllers
 
 
         }
+
         [HttpGet]
         [Route("count_all")]
-        [Authorize(Roles ="ADMIN")]
-        public IActionResult CountAll1()
+        [Authorize(Roles = "ADMIN")]
+        public IActionResult GetAllTicketCounts([FromQuery] string filter, [FromQuery] DateOnly? date)
         {
-            var countResponseDto = ticketService.GetAllCount();
-
-            return Ok(countResponseDto);
+            try
+            {
+                var result = ticketService.GetAllCount(filter, date ?? DateOnly.MinValue);
+                return Ok(result);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred.", error = ex.Message });
+            }
         }
     }
 }
+

@@ -1,7 +1,7 @@
-﻿using Microsoft.AspNetCore.Identity;
-using Microsoft.IdentityModel.Tokens;
+﻿using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using TechAid.Interface;
 using TechAid.Models.Enums;
@@ -12,14 +12,12 @@ namespace TechAid.Service
     {
         private readonly IConfiguration configuration;
 
-        
         public TokenGenerator(IConfiguration configuration)
         {
             this.configuration = configuration;
         }
 
-
-        public string GenerateToken(Guid userId, Role role)
+        public string GenerateAccessToken(Guid userId, Role role)
         {
             var issuer = configuration["JwtSettings:Issuer"];
             var audience = configuration["JwtSettings:Audience"];
@@ -28,10 +26,10 @@ namespace TechAid.Service
 
             var claims = new[]
             {
-        new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()), // Unique Token ID
-        new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()), // Subject (User ID)
-        new Claim(ClaimTypes.Role, role.ToString()) // ✅ Correct way to store role
-    };
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()),
+                new Claim(ClaimTypes.Role, role.ToString())
+            };
 
             var signingCredentials = new SigningCredentials(
                 new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
@@ -49,6 +47,14 @@ namespace TechAid.Service
             return new JwtSecurityTokenHandler().WriteToken(securityToken);
         }
 
-
+        public string GenerateRefreshToken()
+        {
+            var randomNumber = new byte[32];
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                rng.GetBytes(randomNumber);
+                return Convert.ToBase64String(randomNumber);
+            }
+        }
     }
 }
