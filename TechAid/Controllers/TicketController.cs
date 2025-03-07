@@ -283,6 +283,10 @@ namespace TechAid.Controllers
         public IActionResult GetTicketById([FromQuery]int Id)
         {
             var result = ticketService.GetTicketById(Id);
+            if(result == null)
+            {
+                return NotFound();
+            }
 
             return Ok(result);
         }
@@ -295,6 +299,21 @@ namespace TechAid.Controllers
 
             return Ok(result);
         }
+
+
+        [HttpGet]
+        [Route("analytics")]
+        public IActionResult Analytics([FromQuery] string filter, [FromQuery] DateOnly? date, [FromQuery] Status? status,
+         [FromQuery] Priority? priority,
+         [FromQuery] Category? category,
+         [FromQuery] Department? department)
+        {
+            var result = ticketService.Analytics(filter, date ?? DateOnly.MinValue, status, priority, category, department);
+
+            return Ok(result);
+        }
+
+       
     }
 }
 

@@ -369,9 +369,188 @@ namespace TechAid.Service
                     Comment = t.Comment
                 })
                 .FirstOrDefault();
+            if(ticket is null)
+            {
+                return null;
+            }
 
             return ticket;
         }
+
+        public object Analytics(string filter, DateOnly date, Status? status = null, Priority? priority = null, Category? category = null, Department? department = null)
+        {
+            DateTime referenceDate = DateTime.Now; // Always use current date except for "set"
+
+            if (filter.ToLower() == "none")
+            {
+                var query = dbContext.Tickets.AsQueryable();
+
+                if (status.HasValue)
+                    query = query.Where(t => t.Status == status.Value);
+
+                if (priority.HasValue)
+                    query = query.Where(t => t.Priority == priority.Value);
+
+                if (category.HasValue)
+                    query = query.Where(t => t.Category == category.Value);
+
+                if (department.HasValue)
+                    query = query.Where(t => t.Department == department.Value);
+
+                return new List<DailyCount>
+        {
+                new DailyCount
+                {
+                    Day = "All",
+                    Date = "N/A",
+                    TotalTickets = query.Count(),
+                    ActiveTickets = query.Count(t => t.Status == Status.ACTIVE),
+                    NotActiveTickets = query.Count(t => t.Status == Status.NOT_ACTIVE),
+                    CompletedTickets = query.Count(t => t.Status == Status.COMPLETED)
+                }
+            };
+                }
+
+            if (filter.ToLower() == "month")
+            {
+                // When "month" is selected, call WeeklyAnalytics and return its result directly
+                return WeeklyAnalytics(filter, date, status, priority, category, department);
+            }
+
+            // Get the first day of the current month
+            DateTime firstDayOfMonth = new DateTime(referenceDate.Year, referenceDate.Month, 1);
+
+            // Define weekly ranges
+            DateTime week1Start = firstDayOfMonth;
+            DateTime week1End = firstDayOfMonth.AddDays(6 - (int)firstDayOfMonth.DayOfWeek); // Ends on Sunday
+
+            DateTime week2Start = week1End.AddDays(1);
+            DateTime week2End = week2Start.AddDays(6);
+
+            DateTime week3Start = week2End.AddDays(1);
+            DateTime week3End = week3Start.AddDays(6);
+
+            DateTime week4Start = week3End.AddDays(1);
+            DateTime week4End = week4Start.AddDays(6);
+
+            // Handle week filtering
+            DateTime startDate, endDate;
+            switch (filter.ToLower())
+            {
+                case "week1":
+                    startDate = week1Start;
+                    endDate = week1End;
+                    break;
+                case "week2":
+                    startDate = week2Start;
+                    endDate = week2End;
+                    break;
+                case "week3":
+                    startDate = week3Start;
+                    endDate = week3End;
+                    break;
+                case "week4":
+                    startDate = week4Start;
+                    endDate = week4End;
+                    break;
+                case "week":
+                    startDate = referenceDate.AddDays(-(int)referenceDate.DayOfWeek + 1); // Monday of current week
+                    endDate = startDate.AddDays(6); // Ends on Sunday
+                    break;
+                case "day":
+                    startDate = referenceDate.Date;
+                    endDate = referenceDate.Date;
+                    break;
+                case "set":
+                    startDate = date.ToDateTime(TimeOnly.MinValue).Date;
+                    endDate = startDate;
+                    break;
+                default:
+                    throw new ArgumentException("Invalid filter value.");
+            }
+
+            var result = new List<DailyCount>();
+
+            for (DateTime currentDate = startDate; currentDate <= endDate; currentDate = currentDate.AddDays(1))
+            {
+                var query = dbContext.Tickets.Where(t => t.CreatedAt.Date == currentDate.Date);
+
+                if (status.HasValue)
+                    query = query.Where(t => t.Status == status.Value);
+
+                if (priority.HasValue)
+                    query = query.Where(t => t.Priority == priority.Value);
+
+                if (category.HasValue)
+                    query = query.Where(t => t.Category == category.Value);
+
+                if (department.HasValue)
+                    query = query.Where(t => t.Department == department.Value);
+
+                result.Add(new DailyCount
+                {
+                    Day = currentDate.DayOfWeek.ToString(),
+                    Date = currentDate.ToString("yyyy-MM-dd"),
+                    TotalTickets = query.Count(),
+                    ActiveTickets = query.Count(t => t.Status == Status.ACTIVE),
+                    NotActiveTickets = query.Count(t => t.Status == Status.NOT_ACTIVE),
+                    CompletedTickets = query.Count(t => t.Status == Status.COMPLETED)
+                });
+            }
+
+            return result;
+        }
+
+
+        public List<WeeklyCount> WeeklyAnalytics(string filter, DateOnly date, Status? status = null, Priority? priority = null, Category? category = null, Department? department = null)
+{
+            DateTime referenceDate = DateTime.Now;
+
+            DateTime startDate = filter.ToLower() switch
+            {
+                "month" => new DateTime(referenceDate.Year, referenceDate.Month, 1),
+                "set" => date.ToDateTime(TimeOnly.MinValue).Date,
+                _ => throw new ArgumentException("Invalid filter value. Only 'month' is supported for weekly aggregation.")
+            };
+
+            DateTime endDate = startDate.AddMonths(1).AddDays(-1);
+            var weeklyCounts = new List<WeeklyCount>();
+
+            for (int week = 1; week <= 4; week++)
+            {
+            DateTime weekStart = startDate.AddDays((week - 1) * 7);
+            DateTime weekEnd = weekStart.AddDays(6);
+
+            if (weekStart > endDate) break;
+            if (weekEnd > endDate) weekEnd = endDate;
+
+            var query = dbContext.Tickets.Where(t => t.CreatedAt.Date >= weekStart.Date && t.CreatedAt.Date <= weekEnd.Date);
+
+            if (status.HasValue)
+                query = query.Where(t => t.Status == status.Value);
+
+            if (priority.HasValue)
+                query = query.Where(t => t.Priority == priority.Value);
+
+            if (category.HasValue)
+                query = query.Where(t => t.Category == category.Value);
+
+            if (department.HasValue)
+                query = query.Where(t => t.Department == department.Value);
+
+            weeklyCounts.Add(new WeeklyCount
+            {
+                WeekNumber = week,
+                TotalTickets = query.Count(),
+                ActiveTickets = query.Count(t => t.Status == Status.ACTIVE),
+            NotActiveTickets = query.Count(t => t.Status == Status.NOT_ACTIVE),
+            CompletedTickets = query.Count(t => t.Status == Status.COMPLETED)
+                });
+            }
+    
+            return weeklyCounts;
+}
+
 
 
 
