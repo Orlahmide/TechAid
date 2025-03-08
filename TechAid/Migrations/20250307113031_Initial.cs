@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace TechAid.Migrations
 {
     /// <inheritdoc />
-    public partial class initialmigration : Migration
+    public partial class Initial : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -41,7 +41,7 @@ namespace TechAid.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     Subject = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Description = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Attachment = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Attachment = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     Category = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Department = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Priority = table.Column<string>(type: "nvarchar(max)", nullable: false),
@@ -61,12 +61,22 @@ namespace TechAid.Migrations
                         principalTable: "Employees",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Tickets_Employees_It_PersonnelId",
+                        column: x => x.It_PersonnelId,
+                        principalTable: "Employees",
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateIndex(
                 name: "IX_Tickets_EmployeeId",
                 table: "Tickets",
                 column: "EmployeeId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Tickets_It_PersonnelId",
+                table: "Tickets",
+                column: "It_PersonnelId");
         }
 
         /// <inheritdoc />

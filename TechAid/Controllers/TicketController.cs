@@ -149,11 +149,12 @@ namespace TechAid.Controllers
 
         [HttpGet("filter")]
         public IActionResult GetFilteredTickets(
-         [FromQuery] DateTime? date,
+         [FromQuery] DateOnly? date,
          [FromQuery] Status? status,
          [FromQuery] Priority? priority,
          [FromQuery] Category? category,
-         [FromQuery] Department? department)
+         [FromQuery] Department? department,
+        [FromQuery] string filter)
         {
             var authHeader = Request.Headers["Authorization"].ToString();
 
@@ -167,35 +168,37 @@ namespace TechAid.Controllers
 
             if (employeeId == null)
             {
-                return Unauthorized("Invalid token.");
+                return Unauthorized("Invalid token."); 
             }
 
-            var tickets = ticketService.Search(date, employeeId.Value, status, priority, category, department);
+            var tickets = ticketService.Search(filter, date, employeeId.Value, status, priority, category, department);
             return Ok(tickets);
         }
 
         [HttpGet("filter_for_admin")]
         [Authorize(Roles = "ADMIN, IT_PERSONNEL")]
         public IActionResult GetFilteredTicketsAdmin(
-         [FromQuery] DateTime? date,
+         [FromQuery] DateOnly? date,
          [FromQuery] Status? status,
          [FromQuery] Priority? priority,
          [FromQuery] Category? category,
-         [FromQuery] Department? department)
+         [FromQuery] Department? department,
+            [FromQuery] string filter)
         {
 
-            var tickets = ticketService.SearchForAdmin(date, status, priority, category, department);
+            var tickets = ticketService.SearchForAdmin(filter, date, status, priority, category, department);
             return Ok(tickets);
         }
 
         [HttpPost]
         [Route("assign")]
-        [Authorize(Roles = "IT_PERSONNEL")]
-        public IActionResult AssignTicket([FromQuery] int ticketId)
+        [Authorize(Roles = "IT_PERSONNEL, ADMIN")]
+        public IActionResult AssignTicket([FromQuery] int ticketId, [FromQuery] Guid id)
         {
-
+            // Extract the token from the Authorization header
             var token = Request.Headers["Authorization"].ToString().Replace("Bearer ", "").Trim();
 
+            // Check if the token is empty or null
             if (string.IsNullOrEmpty(token))
             {
                 return Unauthorized("Missing or invalid Authorization header.");
@@ -203,26 +206,39 @@ namespace TechAid.Controllers
 
             try
             {
+                // Extract claims from the token
                 var (employeeId, role) = TokenHelper.ExtractClaimsFromToken(token);
 
+                // If employeeId is null, the token is invalid
                 if (employeeId == null)
                 {
                     return Unauthorized("Invalid token.");
                 }
 
-                var employee = ticketService.AssignTicket(employeeId, ticketId);
+                // Declare the variable once to hold the employee data
+                object? employee = null;
 
+                // Assign ticket for IT personnel
+                if (role == "IT_PERSONNEL")
+                {
+                    employee = ticketService.AssignTicket(employeeId, ticketId);
+                }
+                else
+                {
+                    // For other roles, use the provided GUID (id)
+                    employee = ticketService.AssignTicket(id, ticketId);
+                }
 
+                // Return the assigned employee details
                 return Ok(employee);
             }
             catch (Exception ex)
             {
-
+                // Return a 500 status code with the exception message in case of error
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
-
-
         }
+
         [HttpGet]
         [Route("count_all_by_id")]
         public IActionResult CountAllById(string filter, [FromQuery] DateOnly date)

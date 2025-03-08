@@ -145,10 +145,69 @@ namespace TechAid.Service
             return count;
         }
 
-        public IEnumerable<TicketResponseDto> Search(DateTime? d, Guid id, Status? status, Priority? priority, Category? category, Department? department)
+        public IEnumerable<TicketResponseDto> Search(string filter, DateOnly? date, Guid id, Status? status, Priority? priority, Category? category, Department? department)
         {
+            DateTime referenceDate = DateTime.Now;
+            DateTime startDate, endDate;
+
+            switch (filter.ToLower())
+            {
+                case "month":
+                    startDate = new DateTime(referenceDate.Year, referenceDate.Month, 1);
+                    endDate = startDate.AddMonths(1).AddDays(-1); // End of the month
+                    break;
+
+                case "set":
+                    // If 'set', use the provided date or the current date
+                    startDate = date.HasValue ? date.Value.ToDateTime(TimeOnly.MinValue).Date : referenceDate;
+                    endDate = startDate; // If 'set', end on the same day
+                    break;
+
+                case "week":
+                    // Calculate the start of the current week (Monday) and the end (Sunday)
+                    startDate = referenceDate.AddDays(-(int)referenceDate.DayOfWeek + 1); // Start of the week (Monday)
+                    endDate = startDate.AddDays(6); // End of the week (Sunday)
+                    break;
+
+                case "day":
+                    // If 'day', use the provided date or the current date
+                    startDate = date.HasValue ? date.Value.ToDateTime(TimeOnly.MinValue).Date : referenceDate.Date;
+                    endDate = startDate; // End on the same day
+                    break;
+
+                case "none":
+                    // If 'none', no date filter is applied
+                    return dbContext.Tickets
+                        .Where(t => (t.EmployeeId == id || t.It_PersonnelId == id)) // Only filter by employee
+                        .Select(t => new TicketResponseDto
+                        {
+                            TicketId = t.Id,
+                            Subject = t.Subject,
+                            Description = t.Description,
+                            Attachment = t.Attachment,
+                            Category = t.Category,
+                            Department = t.Department,
+                            Priority = t.Priority,
+                            Status = t.Status,
+                            CreatedAt = t.CreatedAt,
+                            UpdatedAt = t.UpdatedAt,
+                            FirstName = t.Employee != null ? t.Employee.First_name : null,
+                            LastName = t.Employee != null ? t.Employee.Last_name : null,
+                            PhoneNumber = t.Employee != null ? t.Employee.Phone_number : null,
+                            Email = t.Employee != null ? t.Employee.Email : null,
+                            IT_Personel_FirstName = t.ItPersonnel != null ? t.ItPersonnel.First_name : null,
+                            IT_Personel_LastName = t.ItPersonnel != null ? t.ItPersonnel.Last_name : null,
+                            IT_Personel_Email = t.ItPersonnel != null ? t.ItPersonnel.Email : null,
+                            Comment = t.Comment
+                        }).ToList();
+
+                default:
+                    throw new ArgumentException("Invalid filter value. Valid values are 'month', 'set', 'week', 'day', and 'none'.");
+            }
+
+            // Base query with date range filter
             var query = dbContext.Tickets
-                .Where(t => t.EmployeeId == id || t.It_PersonnelId == id)
+                .Where(t => (t.EmployeeId == id || t.It_PersonnelId == id) && t.CreatedAt.Date >= startDate.Date && t.CreatedAt.Date <= endDate.Date) // Filter by employee and date range
                 .Select(t => new TicketResponseDto
                 {
                     TicketId = t.Id,
@@ -171,11 +230,9 @@ namespace TechAid.Service
                     Comment = t.Comment
                 });
 
+            // Apply additional filters based on optional parameters
             if (status.HasValue)
                 query = query.Where(t => t.Status == status.Value);
-
-            if (d.HasValue)
-                query = query.Where(t => t.CreatedAt >= d.Value.Date && t.CreatedAt < d.Value.Date.AddDays(1));
 
             if (department.HasValue)
                 query = query.Where(t => t.Department == department.Value);
@@ -190,15 +247,76 @@ namespace TechAid.Service
         }
 
 
-        public IEnumerable<TicketResponseDto> SearchForAdmin(DateTime? d, Status? status, Priority? priority, Category? category, Department? department)
-        {
-            var query = dbContext.Tickets.AsQueryable();
 
+        public IEnumerable<TicketResponseDto> SearchForAdmin(string filter, DateOnly? date, Status? status, Priority? priority, Category? category, Department? department)
+        {
+            DateTime referenceDate = DateTime.Now;
+            DateTime startDate, endDate;
+
+            switch (filter.ToLower())
+            {
+                case "month":
+                    // Get the first day of the current month
+                    startDate = new DateTime(referenceDate.Year, referenceDate.Month, 1);
+                    endDate = startDate.AddMonths(1).AddDays(-1); // End of the month
+                    break;
+
+                case "set":
+                    // If 'set', use the provided date or the current date
+                    startDate = date.HasValue ? date.Value.ToDateTime(TimeOnly.MinValue).Date : referenceDate;
+                    endDate = startDate; // If 'set', end on the same day
+                    break;
+
+                case "week":
+                    // Calculate the start of the current week (Monday) and the end (Sunday)
+                    startDate = referenceDate.AddDays(-(int)referenceDate.DayOfWeek + 1); // Start of the week (Monday)
+                    endDate = startDate.AddDays(6); // End of the week (Sunday)
+                    break;
+
+                case "day":
+                    // If 'day', use the provided date or the current date
+                    startDate = date.HasValue ? date.Value.ToDateTime(TimeOnly.MinValue).Date : referenceDate.Date;
+                    endDate = startDate; // End on the same day
+                    break;
+
+                case "none":
+                    // If 'none', no date filter is applied
+                    return dbContext.Tickets
+                        .AsQueryable()
+                        .Where(t => true) // No date filtering applied
+                        .Select(t => new TicketResponseDto
+                        {
+                            TicketId = t.Id,
+                            Subject = t.Subject,
+                            Description = t.Description,
+                            Attachment = t.Attachment,
+                            Category = t.Category,
+                            Department = t.Department,
+                            Priority = t.Priority,
+                            Status = t.Status,
+                            CreatedAt = t.CreatedAt,
+                            UpdatedAt = t.UpdatedAt,
+                            FirstName = t.Employee.First_name,
+                            LastName = t.Employee.Last_name,
+                            PhoneNumber = t.Employee.Phone_number,
+                            Email = t.Employee.Email,
+                            IT_Personel_FirstName = t.ItPersonnel != null ? t.ItPersonnel.First_name : null,
+                            IT_Personel_LastName = t.ItPersonnel != null ? t.ItPersonnel.Last_name : null,
+                            IT_Personel_Email = t.ItPersonnel != null ? t.ItPersonnel.Email : null,
+                            Comment = t.Comment
+                        }).ToList();
+
+                default:
+                    throw new ArgumentException("Invalid filter value. Valid values are 'month', 'set', 'week', 'day', and 'none'.");
+            }
+
+            // Base query with date range filter
+            var query = dbContext.Tickets.AsQueryable()
+                .Where(t => t.CreatedAt.Date >= startDate.Date && t.CreatedAt.Date <= endDate.Date); // Filter by date range
+
+            // Apply additional filters based on optional parameters
             if (status.HasValue)
                 query = query.Where(t => t.Status == status.Value);
-
-            if (d.HasValue)
-                query = query.Where(t => t.CreatedAt >= d.Value.Date && t.CreatedAt < d.Value.Date.AddDays(1));
 
             if (department.HasValue)
                 query = query.Where(t => t.Department == department.Value);
@@ -220,9 +338,9 @@ namespace TechAid.Service
                 Priority = t.Priority,
                 Status = t.Status,
                 CreatedAt = t.CreatedAt,
-                UpdatedAt = t.UpdatedAt, // Fixed typo: UpdateddAt -> UpdatedAt
+                UpdatedAt = t.UpdatedAt,
                 FirstName = t.Employee.First_name,
-                LastName = t.Employee.Last_name, // Fixed typo: LateName -> LastName
+                LastName = t.Employee.Last_name,
                 PhoneNumber = t.Employee.Phone_number,
                 Email = t.Employee.Email,
                 IT_Personel_FirstName = t.ItPersonnel != null ? t.ItPersonnel.First_name : null,
@@ -234,12 +352,11 @@ namespace TechAid.Service
 
 
 
-
         public string AssignTicket(Guid? id, int idd)
         {
             var assign = dbContext.Tickets.Find(idd);
 
-            if (assign is not null && assign.Status == Status.NOT_ACTIVE)
+            if (assign is not null)
             {
                 assign.UpdatedAt = DateTime.Now;
                 assign.Status = Status.ACTIVE;
@@ -369,10 +486,7 @@ namespace TechAid.Service
                     Comment = t.Comment
                 })
                 .FirstOrDefault();
-            if(ticket is null)
-            {
-                return null;
-            }
+            
 
             return ticket;
         }
