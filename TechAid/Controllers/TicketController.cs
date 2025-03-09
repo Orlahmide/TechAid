@@ -5,6 +5,7 @@ using TechAid.Dto;
 using TechAid.Models.Enums;
 using TechAid.Service;
 using TechAid.Utils;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace TechAid.Controllers
 {
@@ -298,13 +299,38 @@ namespace TechAid.Controllers
         [Route("get_ticket_by_id/")]
         public IActionResult GetTicketById([FromQuery]int Id)
         {
-            var result = ticketService.GetTicketById(Id);
-            if(result == null)
+
+            var token = Request.Headers["Authorization"].ToString().Replace("Bearer ", "").Trim();
+
+            if (string.IsNullOrEmpty(token))
             {
-                return NotFound();
+                return Unauthorized("Missing or invalid Authorization header.");
             }
 
-            return Ok(result);
+            try
+            {
+                var (employeeId, role) = TokenHelper.ExtractClaimsFromToken(token);
+
+                if (employeeId == null)
+                {
+                    return Unauthorized("Invalid token.");
+                }
+
+                var result = ticketService.GetTicketByIdEmployee(employeeId,Id);
+                if (result == null)
+                {
+                    return NotFound();
+                }
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+
+           
         }
 
         [HttpGet]

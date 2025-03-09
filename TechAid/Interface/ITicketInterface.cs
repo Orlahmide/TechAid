@@ -25,5 +25,7 @@ namespace TechAid.Interface
         TicketResponseDto? GetTicketByTicketIdForIT(int tic);
 
         AnalyticsDto Analytics(string filter, DateOnly date);
+
+
     }
 }
