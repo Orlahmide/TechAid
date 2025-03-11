@@ -80,6 +80,9 @@ namespace TechAid.Service
 
             return ticketDetails;
         }
+
+
+
         public MarkAsCompletedResponse MarkAsCompleted(Guid? id, int ticId, string comment)
         {
             Ticket? ticketDetails = null;
@@ -141,7 +144,7 @@ namespace TechAid.Service
                 return new MarkAsCompletedResponse { Message = $"Ticket marked as completed, but email failed: {ex.Message}" };
             }
 
-            return new MarkAsCompletedResponse { Message = "Ticket marked as completed and email sent successfully." };
+            return new MarkAsCompletedResponse {Success=true, Message = "Ticket marked as completed and email sent successfully." };
         }
 
 
@@ -437,94 +440,147 @@ namespace TechAid.Service
             return new AssignTicketResponse { Success = true, Message = "Ticket assigned successfully and emails sent." };
         }
 
-
-
-
-
-
-
-        public CountResponseDto GetAllCountById(Guid? id, string filter, DateOnly date)
+        public CountResponseDto GetAllCountById(Guid? id, string filter, DateOnly? date)
         {
             if (id is null)
             {
                 throw new ArgumentException("ID cannot be null.");
             }
 
-            // Get the date range based on the filter
-            DateTime startDate = filter.ToLower() switch
+            try
             {
-                "set" => date.ToDateTime(TimeOnly.MinValue),
-                "day" => DateTime.UtcNow.Date,
-                "week" => DateTime.UtcNow.Date.AddDays(-7),
-                "month" => DateTime.UtcNow.Date.AddMonths(-1),
-                "none" => DateTime.MinValue,
-                _ => throw new ArgumentException("Invalid filter value.")
-            };
+                DateTime referenceDate = DateTime.Now;
+                DateTime startDate, endDate;
 
-            var query = dbContext.Tickets.Where(t => (t.EmployeeId == id || t.It_PersonnelId == id));
+                // Determine the date range based on the filter
+                switch (filter.ToLower())
+                {
+                    case "month":
+                        startDate = new DateTime(referenceDate.Year, referenceDate.Month, 1);
+                        endDate = startDate.AddMonths(1).AddDays(-1); // End of the month
+                        break;
 
-            if (filter.ToLower() == "set")
-            {
-                // Filter to match exactly the date part only
-                query = query.Where(t => t.CreatedAt.Date == date.ToDateTime(TimeOnly.MinValue).Date);
+                    case "set":
+                        if (!date.HasValue)
+                            throw new ArgumentException("Date must be provided when using 'set' filter.");
+                        startDate = date.Value.ToDateTime(TimeOnly.MinValue).Date;
+                        endDate = startDate; // Same day
+                        break;
+
+                    case "day":
+                        startDate = referenceDate.Date;
+                        endDate = startDate; // Today’s date
+                        break;
+
+                    case "week":
+                        // Ensure the week starts on Monday
+                        int daysToMonday = ((int)referenceDate.DayOfWeek == 0) ? -6 : (1 - (int)referenceDate.DayOfWeek);
+                        startDate = referenceDate.AddDays(daysToMonday).Date;
+                        endDate = startDate.AddDays(6); // End of the week (Sunday)
+                        break;
+
+                    case "none":
+                        startDate = DateTime.MinValue;
+                        endDate = DateTime.MaxValue;
+                        break;
+
+                    default:
+                        throw new ArgumentException("Invalid filter value. Valid values are 'month', 'set', 'week', 'day', and 'none'.");
+                }
+
+                var query = dbContext.Tickets
+                    .Where(t => (t.EmployeeId == id || t.It_PersonnelId == id) &&
+                                t.CreatedAt.Date >= startDate.Date &&
+                                t.CreatedAt.Date <= endDate.Date);
+
+                var allTicket = query.Count();
+                var activeTicket = query.Count(t => t.Status == Status.ACTIVE);
+                var notActiveTicket = query.Count(t => t.Status == Status.NOT_ACTIVE);
+                var completedTicket = query.Count(t => t.Status == Status.COMPLETED);
+
+                return new CountResponseDto()
+                {
+                    ActivelNumber = activeTicket,
+                    TotalNumber = allTicket,
+                    CompletedNumber = completedTicket,
+                    NotActiveNumber = notActiveTicket
+                };
             }
-            else if (startDate != DateTime.MinValue)
+            catch (Exception ex)
             {
-                query = query.Where(t => t.CreatedAt >= startDate);
+                Console.WriteLine($"Error in GetAllCountById: {ex.Message}");
+                return new CountResponseDto();
             }
-
-            var allTicket = query.Count();
-            var activeTicket = query.Where(t => t.Status == Status.ACTIVE).Count();
-            var notActiveTicket = query.Where(t => t.Status == Status.NOT_ACTIVE).Count();
-            var completedTicket = query.Where(t => t.Status == Status.COMPLETED).Count();
-
-            return new CountResponseDto()
-            {
-                ActivelNumber = activeTicket,
-                TotalNumber = allTicket,
-                CompletedNumber = completedTicket,
-                NotActiveNumber = notActiveTicket
-            };
         }
 
-        public CountResponseDto GetAllCount(string filter, DateOnly date)
+
+        public CountResponseDto GetAllCount(string filter, DateOnly? date)
         {
-            // Get the date range based on the filter
-            DateTime startDate = filter.ToLower() switch
+            try
             {
-                "set" => date.ToDateTime(TimeOnly.MinValue),
-                "day" => DateTime.UtcNow.Date,
-                "week" => DateTime.UtcNow.Date.AddDays(-7),
-                "month" => DateTime.UtcNow.Date.AddMonths(-1),
-                "none" => DateTime.MinValue,
-                _ => throw new ArgumentException("Invalid filter value.")
-            };
+                DateTime referenceDate = DateTime.Now;
+                DateTime startDate, endDate;
 
-            var query = dbContext.Tickets.AsQueryable();
+                // Determine the date range based on the filter
+                switch (filter.ToLower())
+                {
+                    case "month":
+                        startDate = new DateTime(referenceDate.Year, referenceDate.Month, 1);
+                        endDate = startDate.AddMonths(1).AddDays(-1); // End of the month
+                        break;
 
-            if (filter.ToLower() == "set")
-            {
-                // Filter to match exactly the date part only
-                query = query.Where(t => t.CreatedAt.Date == date.ToDateTime(TimeOnly.MinValue).Date);
+                    case "set":
+                        if (!date.HasValue)
+                            throw new ArgumentException("Date must be provided when using 'set' filter.");
+                        startDate = date.Value.ToDateTime(TimeOnly.MinValue).Date;
+                        endDate = startDate; // Same day
+                        break;
+
+                    case "day":
+                        startDate = referenceDate.Date;
+                        endDate = startDate; // Today’s date
+                        break;
+
+                    case "week":
+                        // Ensure the week starts on Monday
+                        int daysToMonday = ((int)referenceDate.DayOfWeek == 0) ? -6 : (1 - (int)referenceDate.DayOfWeek);
+                        startDate = referenceDate.AddDays(daysToMonday).Date;
+                        endDate = startDate.AddDays(6); // End of the week (Sunday)
+                        break;
+
+                    case "none":
+                        startDate = DateTime.MinValue;
+                        endDate = DateTime.MaxValue;
+                        break;
+
+                    default:
+                        throw new ArgumentException("Invalid filter value. Valid values are 'month', 'set', 'week', 'day', and 'none'.");
+                }
+
+                var query = dbContext.Tickets
+                    .Where(t => t.CreatedAt.Date >= startDate.Date &&
+                                t.CreatedAt.Date <= endDate.Date);
+
+                var allTicket = query.Count();
+                var activeTicket = query.Count(t => t.Status == Status.ACTIVE);
+                var notActiveTicket = query.Count(t => t.Status == Status.NOT_ACTIVE);
+                var completedTicket = query.Count(t => t.Status == Status.COMPLETED);
+
+                return new CountResponseDto()
+                {
+                    ActivelNumber = activeTicket,
+                    TotalNumber = allTicket,
+                    CompletedNumber = completedTicket,
+                    NotActiveNumber = notActiveTicket
+                };
             }
-            else if (startDate != DateTime.MinValue)
+            catch (Exception ex)
             {
-                query = query.Where(t => t.CreatedAt >= startDate);
+                Console.WriteLine($"Error in GetAllCount: {ex.Message}");
+                return new CountResponseDto();
             }
-
-            var allTicket = query.Count();
-            var activeTicket = query.Count(t => t.Status == Status.ACTIVE);
-            var notActiveTicket = query.Count(t => t.Status == Status.NOT_ACTIVE);
-            var completedTicket = query.Count(t => t.Status == Status.COMPLETED);
-
-            return new CountResponseDto()
-            {
-                ActivelNumber = activeTicket,
-                TotalNumber = allTicket,
-                CompletedNumber = completedTicket,
-                NotActiveNumber = notActiveTicket
-            };
         }
+
 
 
         public TicketResponseDto? GetTicketById(int ticketId)
